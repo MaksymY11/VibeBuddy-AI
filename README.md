@@ -22,12 +22,23 @@ Explain your design in plain language.
 Some prompts to answer:
 
 - What features does each `Song` use in your system
-  - For example: genre, mood, energy, tempo
+  - Energy
+  - Valence
+  - Danceability
 - What information does your `UserProfile` store
+  - energy_score: float
+  - valence_score: float
+  - dance_score: float
+  - likes_acoustic: bool
+  - mood: str
 - How does your `Recommender` compute a score for each song
+  - score = 1 - |song_value - user_preference|, where song_value is The song's feature value (e.g., energy = 0.82), and user_preference is The user's preferred value (e.g., energy = 0.80)
 - How do you choose which songs to recommend
+  - Score gets computed for each song, then songs are ranked by score in descending order
 
-You can include a simple diagram or bullet list if helpful.
+- Recommender places bias on energy closeness, potentially ignoring acousticness or mood match.
+
+![Data Flow Diagram](docs/diagram.png)
 
 ---
 
@@ -41,6 +52,8 @@ You can include a simple diagram or bullet list if helpful.
    python -m venv .venv
    source .venv/bin/activate      # Mac or Linux
    .venv\Scripts\activate         # Windows
+
+   ```
 
 2. Install dependencies
 
@@ -101,12 +114,11 @@ Write 1 to 2 paragraphs here about what you learned:
 - about how recommenders turn data into predictions
 - about where bias or unfairness could show up in systems like this
 
-
 ---
 
 ## 7. `model_card_template.md`
 
-Combines reflection and model card framing from the Module 3 guidance. :contentReference[oaicite:2]{index=2}  
+Combines reflection and model card framing from the Module 3 guidance. :contentReference[oaicite:2]{index=2}
 
 ```markdown
 # 🎧 Model Card - Music Recommender Simulation
@@ -158,6 +170,7 @@ Describe your dataset.
 Where does your recommender work well
 
 You can think about:
+
 - Situations where the top results "felt right"
 - Particular user profiles it served well
 - Simplicity or transparency benefits
@@ -169,6 +182,7 @@ You can think about:
 Where does your recommender struggle
 
 Some prompts:
+
 - Does it ignore some genres or moods
 - Does it treat all users as if they have the same taste shape
 - Is it biased toward high energy or one genre by default
@@ -181,6 +195,7 @@ Some prompts:
 How did you check your system
 
 Examples:
+
 - You tried multiple user profiles and wrote down whether the results matched your expectations
 - You compared your simulation to what a real app like Spotify or YouTube tends to recommend
 - You wrote tests for your scoring logic
@@ -208,4 +223,4 @@ A few sentences about what you learned:
 - What surprised you about how your system behaved
 - How did building this change how you think about real music recommenders
 - Where do you think human judgment still matters, even if the model seems "smart"
-
+```
