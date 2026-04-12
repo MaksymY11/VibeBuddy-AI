@@ -31,7 +31,7 @@ def main() -> None:
         # You decide the structure of each returned item.
         # A common pattern is: (song, score, explanation)
         song, score, explanation = rec
-        print(f"{song['title']} - Score: {score:.2f}")
+        print(f"{song['title']} - Score: {score:.2f}/7.00")
         print(f"Because: {explanation}")
         print()
 

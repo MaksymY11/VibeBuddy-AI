@@ -17,28 +17,27 @@ Replace this paragraph with your own summary of what your version does.
 
 ## How The System Works
 
-Explain your design in plain language.
-
-Some prompts to answer:
-
-- What features does each `Song` use in your system
+- What features each `Song` uses:
   - Energy
   - Valence
   - Danceability
-- What information does your `UserProfile` store
+  - Acousticness
+  - Mood (categorical)
+- Infomration `UserProfile` stores:
   - energy_score: float
   - valence_score: float
   - dance_score: float
   - likes_acoustic: bool
   - mood: str
-- How does your `Recommender` compute a score for each song
+- How `Recommender` computes a score for each song:
   - score = 1 - |song_value - user_preference|, where song_value is The song's feature value (e.g., energy = 0.82), and user_preference is The user's preferred value (e.g., energy = 0.80)
-- How do you choose which songs to recommend
+- How songs get recommended:
   - Score gets computed for each song, then songs are ranked by score in descending order
-
-- Recommender places bias on energy closeness, potentially ignoring acousticness or mood match.
+  - Recommender places bias on energy closeness, potentially ignoring acousticness or mood match.
 
 ![Data Flow Diagram](docs/diagram.png)
+
+![Recommendations Sample](docs/console_out.png)
 
 ---
 
