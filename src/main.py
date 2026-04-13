@@ -15,14 +15,10 @@ from recommender import load_songs, recommend_songs
 def main() -> None:
     songs = load_songs("data/songs.csv") 
 
-    # Reggaeton / dembow fan (Bad Bunny, El Alfa style)
-    user_prefs = {
-        "energy_score": 0.88,
-        "valence_score": 0.82,
-        "dance_score": 0.95,
-        "likes_acoustic": False,
-        "mood": "joyful"
-    }
+    # Out-of-range extremist
+    user_prefs = {"energy_score": 0.5, "valence_score": 0.5, "dance_score": 0.5,
+ "likes_acoustic": False, "mood": "sad"}
+
 
     recommendations = recommend_songs(user_prefs, songs, k=5)
 

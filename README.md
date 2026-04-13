@@ -41,185 +41,120 @@ Replace this paragraph with your own summary of what your version does.
 
 ---
 
-## Getting Started
-
-### Setup
-
-1. Create a virtual environment (optional but recommended):
-
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate      # Mac or Linux
-   .venv\Scripts\activate         # Windows
-
-   ```
-
-2. Install dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-3. Run the app:
-
-```bash
-python -m src.main
-```
-
-### Running Tests
-
-Run the starter tests with:
-
-```bash
-pytest
-```
-
-You can add more tests in `tests/test_recommender.py`.
-
----
-
-## Experiments You Tried
-
-Use this section to document the experiments you ran. For example:
-
-- What happened when you changed the weight on genre from 2.0 to 0.5
-- What happened when you added tempo or valence to the score
-- How did your system behave for different types of users
-
----
-
-## Limitations and Risks
-
-Summarize some limitations of your recommender.
-
-Examples:
-
-- It only works on a tiny catalog
-- It does not understand lyrics or language
-- It might over favor one genre or mood
-
-You will go deeper on this in your model card.
-
----
-
-## Reflection
-
-Read and complete `model_card.md`:
-
-[**Model Card**](model_card.md)
-
-Write 1 to 2 paragraphs here about what you learned:
-
-- about how recommenders turn data into predictions
-- about where bias or unfairness could show up in systems like this
-
----
-
-## 7. `model_card_template.md`
-
-Combines reflection and model card framing from the Module 3 guidance. :contentReference[oaicite:2]{index=2}
-
-```markdown
-# 🎧 Model Card - Music Recommender Simulation
+# 🎧 Model Card: Music Recommender Simulation
 
 ## 1. Model Name
 
-Give your recommender a name, for example:
-
-> VibeFinder 1.0
+**Vibe Buddy**
 
 ---
 
 ## 2. Intended Use
 
-- What is this system trying to do
-- Who is it for
+Vibe Buddy takes listener preferences (energy, valence, danceability, a target mood, and whether they like acoustic music) and returns the top-k songs from a small curated catalog, each with a score out of 7.00 and a short "because" explanation.
 
-Example:
-
-> This model suggests 3 to 5 songs from a small catalog based on a user's preferred genre, mood, and energy level. It is for classroom exploration only, not for real users.
+- Recommendations: a ranked list of k songs with a numeric score and a one-line explanation of the two strongest contributing features.
+- User assumptions: the user self-reports numeric preferences in [0, 1], picks a single mood label, and expresses a binary acoustic preference.
+- Audience: classroom exploration, not real listeners or production use.
 
 ---
 
-## 3. How It Works (Short Explanation)
+## 3. How the Model Works
 
-Describe your scoring logic in plain language.
+Each song is tagged with a genre, a mood label, and four numeric traits between 0 and 1: energy, valence ("happiness"), danceability, and acousticness. The user describes themselves on the same numeric scale, plus a mood word and a yes/no for liking acoustic music.
 
-- What features of each song does it consider
-- What information about the user does it use
-- How does it turn those into a number
+For each song, the model compares the user's numbers to the song's, trait by trait; the closer the match, the more points that trait contributes. Mood is a plain yes/no: it adds a point only if the song's mood label equals the user's. Acousticness flips direction based on preference: acoustic lovers get more points for acoustic songs, non-acoustic users get the opposite.
 
-Try to avoid code in this section, treat it like an explanation to a non programmer.
+Traits are weighted unequally: energy is weighted 2.0, valence and danceability 1.5 each, and mood and acousticness 1.0 each. All contributions are summed, songs are ranked by total, and the top k are returned with an explanation naming the two features that contributed most.
+
+Compared to the starter, the scoring was built from scratch using weighted distance for numeric features, exact-match for mood, and a direction-flipping term for acousticness, plus a top-2-feature explanation string.
 
 ---
 
 ## 4. Data
 
-Describe your dataset.
-
-- How many songs are in `data/songs.csv`
-- Did you add or remove any songs
-- What kinds of genres or moods are represented
-- Whose taste does this data mostly reflect
+- Size: 18 songs.
+- Genres (15): pop, lofi, rock, ambient, jazz, synthwave, indie pop, classical, electronic, country, hip hop, latin, post-rock, metal, folk — most genres appear only once.
+- Moods (14): happy, chill, intense, relaxed, moody, focused, melancholy, energetic, nostalgic, aggressive, joyful, ethereal, angry, tender.
+- Modifications: used as shipped; nothing added or removed.
+- Gaps: skews high-energy (half the songs sit above 0.75, few below 0.35); mood labels are free-form strings with no grouping (so "joyful" and "happy" are unrelated); whole regions of taste are missing: e.g. reggae, blues, world music, K-pop, spoken-word.
 
 ---
 
 ## 5. Strengths
 
-Where does your recommender work well
-
-You can think about:
-
-- Situations where the top results "felt right"
-- Particular user profiles it served well
-- Simplicity or transparency benefits
+- Clear-vibe users: listeners with strong energy/valence/dance preferences get intuitive rankings (e.g. high-energy + high-valence + dance-loving reliably surfaces Samba do Sol, Bassquake, Gym Hero).
+- Transparent scoring: every rec comes with an honest two-feature explanation — great for teaching and debugging.
+- Mood as a tie-breaker: when the mood label genuinely exists in the catalog, it cleanly separates otherwise-similar songs.
+- Extreme ends match intuition: low-energy + acoustic-loving consistently surfaces Golden Hour Waltz, Library Rain, Spacewalk Thoughts.
 
 ---
 
 ## 6. Limitations and Bias
 
-Where does your recommender struggle
+1. Energy Dominance Bias
+   - Due to energy having weight of 2.0, combined with danceability and valence weights of 1.5, a user who sets energy_score to 0.9, will most likely get high energy, upbeat songs, completely disregarding set mood.
 
-Some prompts:
+2. High-Energy Caralog Skew
+   - Dataclass itself has 9 of 18 songs with energy > 0.75, but only 3 with enegegy < 0.35, which would make a mid-energy user (0.5) find fewer matches on the low end.
 
-- Does it ignore some genres or moods
-- Does it treat all users as if they have the same taste shape
-- Is it biased toward high energy or one genre by default
-- How could this be unfair if used in a real product
+3. Mood is a Binary Feature
+   - Mood contrubites exactly 1.0 or 0.0, there's no notion of "happy" being closer to "joyful" than to "angry", so a user who picks mood = "jouful" will get mood contribution only for "Samba do Sol", with everything else scoring 0 on mood.
 
 ---
 
 ## 7. Evaluation
 
-How did you check your system
+Test 1: Out-of-range Extremist
 
-Examples:
+- Tested with user_prefs = {"valence score": -2.0}
+- Breaks the scoring formula due to having out of range values (beyond [0,1])
 
-- You tried multiple user profiles and wrote down whether the results matched your expectations
-- You compared your simulation to what a real app like Spotify or YouTube tends to recommend
-- You wrote tests for your scoring logic
+  ![Test_1](docs/Test1.png)
 
-You do not need a numeric metric, but if you used one, explain what it measures.
+Test 2: Contradictory Acoustic Lover
+
+- Tested with user_prefs = {"energy_score": 1.0, "valence_score": 1.0, "likes_acoustic": True}
+- High energy songs are rarely acoutic, thus resulting in top recommendations that are not that good of matches, but rather least-bad compromises.
+
+![Test_2](docs/Test2.png)
+
+Test 3: Unknown Mood String
+
+- Tested with mood string that is a typo/not in catalog user_prefs = {"mood": "melancholic-vibes-2026"}
+- Mood contribution becomes 0 for each song, so feature is silently dropped with no warning.
+
+![Test_3](docs/Test3.png)
+
+Test 4: Perfectly Neutral User
+
+- Tested with user_prefs = {"energy_score": 0.5, "valence_score": 0.5, "dance_score": 0.5,
+  "likes_acoustic": False, "mood": "sad"}
+- Exposes bias, due to ranking being dominated entirely by mood match and acousticness.
+
+![Test_4](docs/Test4.png)
 
 ---
 
 ## 8. Future Work
 
-If you had more time, how would you improve this recommender
-
-Examples:
-
-- Add support for multiple users and "group vibe" recommendations
-- Balance diversity of songs instead of always picking the closest match
-- Use more features, like tempo ranges or lyric themes
+- Richer features: add tempo preference, genre affinity (multi-select with weights), era/year, and language.
+- Soft mood matching: replace exact-string mood with a similarity map (e.g. "joyful" ≈ "happy" ≈ 0.8) or embeddings so near-synonyms contribute partially.
+- Input validation: clamp numeric prefs to [0, 1] and warn on unknown mood strings instead of silently scoring 0.
+- Diversity in top-k: penalize near-duplicates so the top 5 aren't all the same artist/genre.
+- Better explanations: phrase contributions in human terms ("high-energy, upbeat, matches your chill mood") instead of raw numbers.
+- Learned weights: replace hard-coded 2.0/1.5/1.0 with weights fit from user feedback.
 
 ---
 
 ## 9. Personal Reflection
 
-A few sentences about what you learned:
+The biggest learning moment for me was how easy it is to confuse a recommender system, and how much more sophisticated these systems need to be in order to work like they should. Beyond matching user's preferences, these systems need to extract and normalize featueres, validate input, and balance bias, which are things I haven't thought about prior to working on this project.
 
-- What surprised you about how your system behaved
-- How did building this change how you think about real music recommenders
-- Where do you think human judgment still matters, even if the model seems "smart"
-```
+When it comes to AI Tool's contributions, it was helpful to see more personalized explanations contributing to factors like "why should we use feature A vs feature B", "why should this feature A's vector should score more than others". It would be very tedious trying to look this up online, thus saving me a lot of time and giving me valuable insights into how these systems are built from architectural perspective.
+
+What surprised me the most is how little code it takes to make output feel "opinionated", Vibe Buddy only uses weighted sum over five numbers, but when it says "Samba do Sol because it's a top match on danceability and valence," it reads like the system understood me, even though it only measured distance on a couple of axes and sorted.
+
+If I were to extend this project, I would replace hard-coded weights, and binary mood match with softer, learned signals, fitting weights from user feedback and treating mood as a similarity map instead of exact string.
+
+---
