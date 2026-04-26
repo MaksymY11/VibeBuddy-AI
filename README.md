@@ -22,7 +22,10 @@ Replace this paragraph with your own summary of what your version does.
   - Valence
   - Danceability
   - Acousticness
-  - Mood (categorical)
+  - Instrumentalness
+  - Liveness
+  - Speechiness
+  - Mood (categorical, derived from Russell's Circumplex Model)
 - Infomration `UserProfile` stores:
   - energy_score: float
   - valence_score: float
@@ -73,11 +76,14 @@ Compared to the starter, the scoring was built from scratch using weighted dista
 
 ## 4. Data
 
-- Size: 18 songs.
-- Genres (15): pop, lofi, rock, ambient, jazz, synthwave, indie pop, classical, electronic, country, hip hop, latin, post-rock, metal, folk — most genres appear only once.
-- Moods (14): happy, chill, intense, relaxed, moody, focused, melancholy, energetic, nostalgic, aggressive, joyful, ethereal, angry, tender.
-- Modifications: used as shipped; nothing added or removed.
-- Gaps: skews high-energy (half the songs sit above 0.75, few below 0.35); mood labels are free-form strings with no grouping (so "joyful" and "happy" are unrelated); whole regions of taste are missing: e.g. reggae, blues, world music, K-pop, spoken-word.
+- **Original catalog:** 18 handcrafted songs (preserved in `data/songs_original.csv` as baseline for evaluation).
+- **Expanded catalog:** 1,710 songs curated from the Kaggle "Spotify Tracks Genre" dataset. 15 songs sampled per genre with a fixed random seed for reproducibility.
+- **Source:** Kaggle Spotify Tracks Genre dataset, containing real Spotify audio features.
+- **Features (8 numeric):** energy, valence, danceability, acousticness, instrumentalness, liveness, speechiness, tempo_bpm — all in 0.0–1.0 range (except tempo_bpm which is raw BPM).
+- **Genres:** 114 genres from the Spotify dataset, balanced at 15 songs each.
+- **Moods (12):** excited, happy, energetic, aggressive, intense, fiery, peaceful, chill, tender, melancholy, moody, sad — derived using Russell's Circumplex Model of Affect (valence × energy quadrants) with acousticness and danceability as tiebreakers within each quadrant.
+- **Curation script:** `utils/curate_dataset.py` — reads the raw Kaggle CSV, samples by genre, derives mood labels, renames columns, and outputs the final `data/songs.csv`.
+- **Known gaps:** mood distribution is uneven (aggressive/happy/melancholy are overrepresented; tender/chill/sad are underrepresented) due to the natural distribution of Spotify audio features.
 
 ---
 
