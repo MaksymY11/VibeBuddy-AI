@@ -43,7 +43,24 @@ See the full [Model Card](model_card.md) for details on intended use, scoring lo
 pip install -r requirements.txt
 python utils/curate_dataset.py    # generate curated songs.csv (only needed once)
 python utils/data_loader.py       # ingest into ChromaDB (only needed once)
+```
+
+Set your API key in a `.env` file at the project root:
+
+```
+ANTHROPIC_API_KEY=sk-ant-...your-key-here...
+```
+
+Run the app:
+
+```bash
 streamlit run app.py
+```
+
+Test the conversational elicitation standalone:
+
+```bash
+python conversation.py
 ```
 
 ---
@@ -53,8 +70,10 @@ streamlit run app.py
 ```
 VibeBuddy-AI/
 ├── app.py                  # Streamlit UI
+├── llm_client.py           # Claude API wrapper (prompt caching, model selection)
+├── conversation.py         # Multi-turn conversation manager + preference extraction
 ├── src/
-│   └── recommender.py      # Scoring logic
+│   └── recommender.py      # Original scoring logic (baseline)
 ├── utils/
 │   ├── curate_dataset.py   # Spotify CSV → curated songs.csv
 │   ├── data_loader.py      # CSV → ChromaDB ingestion
@@ -64,6 +83,7 @@ VibeBuddy-AI/
 │   └── train.csv           # Raw Spotify dataset
 ├── tests/
 │   └── test_recommender.py
+├── .env                    # API key (not committed)
 ├── model_card.md
 ├── requirements.txt
 └── README.md
