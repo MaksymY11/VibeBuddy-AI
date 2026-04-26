@@ -11,5 +11,11 @@ venv/
 # OS files
 .DS_Store
 
+# Environment files
+.env
+
 # Pytest cache
 .pytest_cache/
+
+# ChromaDB
+chroma_db/
