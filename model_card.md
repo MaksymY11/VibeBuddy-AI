@@ -1,8 +1,8 @@
-# 🎧 Model Card: Music Recommender Simulation
+# 🎧 Model Card: Vibe Buddy AI
 
 ## 1. Model Name
 
-**Vibe Buddy**
+**Vibe Buddy AI**
 
 ---
 
