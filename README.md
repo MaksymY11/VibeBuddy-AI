@@ -26,8 +26,9 @@ Vibe Buddy AI is an AI-powered music recommendation system. Users describe their
 2. LLM extracts structured preferences (8 features + mood) from the conversation
 3. Preferences are converted to an 8-dimensional query vector
 4. ChromaDB retrieves the 20 most similar songs (candidates)
-5. Scorer ranks candidates and selects the top 5
+5. Scorer ranks candidates using weighted distance and selects the top 5
 6. LLM generates natural-language explanations for each recommendation
+7. LLM self-critiques recommendations for genre diversity (retries once if needed)
 
 ---
 
@@ -70,11 +71,14 @@ python conversation.py
 ```
 VibeBuddy-AI/
 ├── app.py                  # Streamlit UI
+├── agent.py                # Agentic orchestrator (5-step pipeline)
+├── scorer.py               # Weighted distance scoring (8 features)
+├── explainer.py            # LLM explanation generation
 ├── llm_client.py           # Claude API wrapper (prompt caching, model selection)
 ├── conversation.py         # Multi-turn conversation manager + preference extraction
-├── src/
-│   └── recommender.py      # Original scoring logic (baseline)
-├── utils/
+├��─ src/
+│   └── recommender.py      # Original scoring logic (baseline, preserved for eval)
+├��─ utils/
 │   ├── curate_dataset.py   # Spotify CSV → curated songs.csv
 │   ├── data_loader.py      # CSV → ChromaDB ingestion
 │   └── retriever.py        # ChromaDB query wrapper
@@ -82,6 +86,8 @@ VibeBuddy-AI/
 │   ├── songs.csv           # Curated 1,710-song catalog
 │   └── train.csv           # Raw Spotify dataset
 ├── tests/
+│   ├── test_scorer.py
+│   ├── test_agent.py
 │   └── test_recommender.py
 ├── .env                    # API key (not committed)
 ├── model_card.md

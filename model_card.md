@@ -8,23 +8,22 @@
 
 ## 2. Intended Use
 
-Vibe Buddy takes listener preferences (energy, valence, danceability, a target mood, and whether they like acoustic music) and returns the top-k songs from a small curated catalog, each with a score out of 7.00 and a short "because" explanation.
+Vibe Buddy takes natural-language mood descriptions (e.g., "I just finished a workout and want something high energy") and returns the top 5 songs from a 1,710-song catalog, each with a match score and a natural-language explanation.
 
-- Recommendations: a ranked list of k songs with a numeric score and a one-line explanation of the two strongest contributing features.
-- User assumptions: the user self-reports numeric preferences in [0, 1], picks a single mood label, and expresses a binary acoustic preference.
-- Audience: classroom exploration, not real listeners or production use.
+- Recommendations: a ranked list of 5 songs with match scores and LLM-generated explanations that reference the user's own words.
+- User assumptions: the user describes their mood conversationally. The system extracts structured preferences (8 audio features + mood) via LLM, with no manual numeric input.
 
 ---
 
 ## 3. How the Model Works
 
-Each song is tagged with a genre, a derived mood label, and eight numeric traits: energy, valence ("happiness"), danceability, acousticness, instrumentalness, liveness, speechiness, and tempo. The user describes themselves on the same numeric scale, plus a mood word and a yes/no for liking acoustic music.
+The system uses a 5-step agentic pipeline:
 
-For each song, the model compares the user's numbers to the song's, trait by trait; the closer the match, the more points that trait contributes. Mood is a plain yes/no: it adds a point only if the song's mood label equals the user's. Acousticness flips direction based on preference: acoustic lovers get more points for acoustic songs, non-acoustic users get the opposite.
-
-Traits are weighted unequally: energy is weighted 2.0, valence and danceability 1.5 each, and mood and acousticness 1.0 each. All contributions are summed, songs are ranked by total, and the top k are returned with an explanation naming the two features that contributed most.
-
-Compared to the starter, the scoring was built from scratch using weighted distance for numeric features, exact-match for mood, and a direction-flipping term for acousticness, plus a top-2-feature explanation string.
+1. **Elicit:** A conversational LLM (Claude Haiku) asks the user about their mood and extracts structured preferences — 8 numeric features (energy, valence, danceability, acousticness, instrumentalness, liveness, speechiness, tempo) plus a mood label — via tool use.
+2. **Retrieve:** The extracted preferences become an 8-dimensional vector. ChromaDB finds the 20 nearest songs by cosine similarity.
+3. **Score:** A weighted distance scorer ranks the 20 candidates. Weights: energy (2.0), valence (1.5), danceability (1.5), acousticness (1.0), tempo (0.75), instrumentalness/liveness/speechiness (0.5 each). Mood adds a 1.0 bonus on exact match. Top 5 are selected.
+4. **Explain:** An LLM (Claude Sonnet) writes natural-language explanations for each song, referencing the user's own words rather than raw feature values.
+5. **Reflect:** An LLM (Claude Haiku) self-critiques the recommendations for genre diversity and feature dominance. If it fails, the pipeline retries once with a wider candidate pool.
 
 ---
 
@@ -43,23 +42,27 @@ Compared to the starter, the scoring was built from scratch using weighted dista
 
 ## 5. Strengths
 
-- Clear-vibe users: listeners with strong energy/valence/dance preferences get intuitive rankings (e.g. high-energy + high-valence + dance-loving reliably surfaces Samba do Sol, Bassquake, Gym Hero).
-- Transparent scoring: every rec comes with an honest two-feature explanation — great for teaching and debugging.
-- Mood as a tie-breaker: when the mood label genuinely exists in the catalog, it cleanly separates otherwise-similar songs.
-- Extreme ends match intuition: low-energy + acoustic-loving consistently surfaces Golden Hour Waltz, Library Rain, Spacewalk Thoughts.
+- Natural input: users describe their mood in plain language instead of tuning numeric sliders, lowering the barrier to use.
+- Large catalog: 1,710 songs across 114 genres provides real diversity compared to the original 18-song set.
+- Human-readable explanations: LLM-generated explanations reference the user's own words, making recommendations feel personalized.
+- Self-critique: the reflect step catches low-diversity results (e.g., all same genre) and retries automatically.
+- Observable reasoning: every pipeline step is logged with timestamps, making the system's decisions transparent.
 
 ---
 
 ## 6. Limitations and Bias
 
 1. Energy Dominance Bias
-   - Due to energy having weight of 2.0, combined with danceability and valence weights of 1.5, a user who sets energy_score to 0.9, will most likely get high energy, upbeat songs, completely disregarding set mood.
+   - Energy's weight (2.0) is double most other features. A user emphasizing energy will get results skewed toward that axis. The reflect step mitigates this partially but does not adjust weights dynamically.
 
-2. High-Energy Caralog Skew
-   - Dataclass itself has 9 of 18 songs with energy > 0.75, but only 3 with enegegy < 0.35, which would make a mid-energy user (0.5) find fewer matches on the low end.
+2. Mood Distribution Skew
+   - The 1,710-song catalog has uneven mood distribution: aggressive (322), happy (286), and melancholy (292) are overrepresented, while tender (9), chill (17), and sad (30) are underrepresented. Users seeking underrepresented moods get fewer quality matches.
 
 3. Mood is a Binary Feature
-   - Mood contrubites exactly 1.0 or 0.0, there's no notion of "happy" being closer to "joyful" than to "angry", so a user who picks mood = "jouful" will get mood contribution only for "Samba do Sol", with everything else scoring 0 on mood.
+   - Mood contributes exactly 1.0 or 0.0 — there's no notion of "happy" being closer to "excited" than to "sad." The LLM maps vague descriptions to the nearest label, but the scoring itself has no soft matching.
+
+4. LLM Extraction Variance
+   - Different phrasings of the same intent can produce different numeric profiles, since the LLM infers feature values from conversation. This introduces non-determinism even at temperature=0.
 
 ---
 
@@ -98,12 +101,11 @@ Test 4: Perfectly Neutral User
 
 ## 8. Future Work
 
-- Richer features: add tempo preference, genre affinity (multi-select with weights), era/year, and language.
-- Soft mood matching: replace exact-string mood with a similarity map (e.g. "joyful" ≈ "happy" ≈ 0.8) or embeddings so near-synonyms contribute partially.
-- Input validation: clamp numeric prefs to [0, 1] and warn on unknown mood strings instead of silently scoring 0.
-- Diversity in top-k: penalize near-duplicates so the top 5 aren't all the same artist/genre.
-- Better explanations: phrase contributions in human terms ("high-energy, upbeat, matches your chill mood") instead of raw numbers.
-- Learned weights: replace hard-coded 2.0/1.5/1.0 with weights fit from user feedback.
+- Soft mood matching: replace exact-string mood with a similarity map or embeddings so near-synonyms contribute partially.
+- Learned weights: replace hard-coded weights with values fit from user feedback or listening history.
+- Real-time Spotify integration: query the Spotify API for live catalog data instead of a static CSV.
+- User history: track past recommendations to avoid repeats and learn preferences over sessions.
+- Genre filtering: allow users to exclude genres they dislike (e.g., filtering out "kids" genre results).
 
 ---
 
