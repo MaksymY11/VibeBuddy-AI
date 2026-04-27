@@ -23,7 +23,26 @@ The system uses a 5-step agentic pipeline:
 2. **Retrieve:** The extracted preferences become an 8-dimensional vector. ChromaDB finds the 20 nearest songs by cosine similarity.
 3. **Score:** A weighted distance scorer ranks the 20 candidates. Weights: energy (2.0), valence (1.5), danceability (1.5), acousticness (1.0), tempo (0.75), instrumentalness/liveness/speechiness (0.5 each). Mood adds a 1.0 bonus on exact match. Top 5 are selected.
 4. **Explain:** An LLM (Claude Sonnet) writes natural-language explanations for each song, referencing the user's own words rather than raw feature values.
-5. **Reflect:** An LLM (Claude Haiku) self-critiques the recommendations for genre diversity and feature dominance. If it fails, the pipeline retries once with a wider candidate pool.
+5. **Reflect:** An LLM (Claude Haiku) self-critiques the recommendations for genre diversity and feature dominance, informed by automated guardrail results. If it fails, the pipeline retries once with a wider candidate pool.
+
+### Guardrails & Reliability
+
+**Input guardrails:**
+- Profile values clamped to 0.0–1.0 (handles out-of-range extraction)
+- Fuzzy mood matching via `difflib` (e.g., "chil" → "chill", unknown moods default to "chill")
+- Input validation rejects empty/too-short messages before they reach the LLM
+- Prompt injection detection using `difflib.SequenceMatcher` with sliding-window fuzzy matching against known injection patterns
+
+**Output guardrails:**
+- Genre diversity check: top 5 must include at least 2 genres
+- Duplicate artist check: no artist appears more than once in top 5
+- Relevance threshold: average match score must exceed a minimum (default 5.0/9.25)
+- Candidate count verification: ensures enough songs were retrieved before scoring
+
+**Cost controls:**
+- Session rate limiter: 5 recommendation flows per session, 4 conversation turns per flow
+- Model tiering: Haiku for extraction/critique, Sonnet for explanations
+- Anthropic console spending cap as a hard monthly limit
 
 ---
 
@@ -68,24 +87,29 @@ The system uses a 5-step agentic pipeline:
 
 ## 7. Evaluation
 
+These tests were originally documented against the baseline system (Module 3). Phase 4 guardrails now address tests 1 and 3 directly.
+
 Test 1: Out-of-range Extremist
 
 - Tested with user_prefs = {"valence score": -2.0}
-- Breaks the scoring formula due to having out of range values (beyond [0,1])
+- **Baseline:** Breaks the scoring formula due to having out of range values (beyond [0,1])
+- **With guardrails:** `validate_profile` clamps all values to 0.0–1.0 before scoring
 
   ![Test_1](docs/Test1.png)
 
 Test 2: Contradictory Acoustic Lover
 
 - Tested with user_prefs = {"energy_score": 1.0, "valence_score": 1.0, "likes_acoustic": True}
-- High energy songs are rarely acoutic, thus resulting in top recommendations that are not that good of matches, but rather least-bad compromises.
+- High energy songs are rarely acoustic, resulting in least-bad compromises rather than strong matches
+- **With guardrails:** `check_relevance` flags low average scores, visible in the pipeline log
 
 ![Test_2](docs/Test2.png)
 
 Test 3: Unknown Mood String
 
 - Tested with mood string that is a typo/not in catalog user_prefs = {"mood": "melancholic-vibes-2026"}
-- Mood contribution becomes 0 for each song, so feature is silently dropped with no warning.
+- **Baseline:** Mood contribution becomes 0 for each song, feature is silently dropped
+- **With guardrails:** `validate_mood` fuzzy-matches via `difflib` (e.g., "melancholic" → "melancholy"), falls back to "chill" if no match
 
 ![Test_3](docs/Test3.png)
 

@@ -24,11 +24,14 @@ Vibe Buddy AI is an AI-powered music recommendation system. Users describe their
 ### Recommendation Pipeline
 1. User describes their mood in natural language
 2. LLM extracts structured preferences (8 features + mood) from the conversation
-3. Preferences are converted to an 8-dimensional query vector
-4. ChromaDB retrieves the 20 most similar songs (candidates)
-5. Scorer ranks candidates using weighted distance and selects the top 5
-6. LLM generates natural-language explanations for each recommendation
-7. LLM self-critiques recommendations for genre diversity (retries once if needed)
+3. **Input guardrails** validate and clean the extracted profile (value clamping, fuzzy mood matching)
+4. Preferences are converted to an 8-dimensional query vector
+5. ChromaDB retrieves the 20 most similar songs (candidates)
+6. Candidate count is verified before scoring
+7. Scorer ranks candidates using weighted distance and selects the top 5
+8. **Output guardrails** check genre diversity, duplicate artists, and relevance scores
+9. LLM generates natural-language explanations for each recommendation
+10. LLM self-critiques recommendations (informed by guardrail results), retries once if needed
 
 ---
 
@@ -61,7 +64,7 @@ streamlit run app.py
 Test the conversational elicitation standalone:
 
 ```bash
-python conversation.py
+python -m pipeline.conversation
 ```
 
 ---
@@ -70,26 +73,30 @@ python conversation.py
 
 ```
 VibeBuddy-AI/
-├── app.py                  # Streamlit UI
-├── agent.py                # Agentic orchestrator (5-step pipeline)
-├── scorer.py               # Weighted distance scoring (8 features)
-├── explainer.py            # LLM explanation generation
-├── llm_client.py           # Claude API wrapper (prompt caching, model selection)
-├── conversation.py         # Multi-turn conversation manager + preference extraction
-├��─ src/
-│   └── recommender.py      # Original scoring logic (baseline, preserved for eval)
-├��─ utils/
-│   ├── curate_dataset.py   # Spotify CSV → curated songs.csv
-│   ├── data_loader.py      # CSV → ChromaDB ingestion
-│   └── retriever.py        # ChromaDB query wrapper
+├── app.py                      # Streamlit UI
+├── pipeline/
+│   ├── __init__.py
+│   ├── agent.py                # Agentic orchestrator (multi-step pipeline)
+│   ├── conversation.py         # Multi-turn conversation manager + preference extraction
+│   ├── explainer.py            # LLM explanation generation
+│   ├── guardrails.py           # Input validation, output checks, prompt injection detection
+│   ├── llm_client.py           # Claude API wrapper (prompt caching, model selection)
+│   ├── rate_limiter.py         # Session-level cost controls (flow + turn caps)
+│   └── scorer.py               # Weighted distance scoring (8 features)
+├── src/
+│   └── recommender.py          # Original scoring logic (baseline, preserved for eval)
+├── utils/
+│   ├── curate_dataset.py       # Spotify CSV → curated songs.csv
+│   ├── data_loader.py          # CSV → ChromaDB ingestion
+│   └── retriever.py            # ChromaDB query wrapper
 ├── data/
-│   ├── songs.csv           # Curated 1,710-song catalog
-│   └── train.csv           # Raw Spotify dataset
+│   ├── songs.csv               # Curated 1,710-song catalog
+│   └── train.csv               # Raw Spotify dataset
 ├── tests/
 │   ├── test_scorer.py
 │   ├── test_agent.py
 │   └── test_recommender.py
-├── .env                    # API key (not committed)
+├── .env                        # API key (not committed)
 ├── model_card.md
 ├── requirements.txt
 └── README.md

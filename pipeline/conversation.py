@@ -1,4 +1,4 @@
-from llm_client import chat_with_tools
+from .llm_client import chat_with_tools
 
 VALID_MOODS = {
     "excited", "happy", "energetic", "aggressive", "intense", "fiery",

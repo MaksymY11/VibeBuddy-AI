@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from datetime import datetime
 from utils.retriever import retrieve_candidates
-from scorer import rank_candidates
-from explainer import generate_explanations
-from llm_client import chat
+from .scorer import rank_candidates
+from .explainer import generate_explanations
+from .llm_client import chat
+from .guardrails import validate_profile, check_candidates, run_output_guardrails
 
 @dataclass
 class StepResult:
@@ -32,6 +33,15 @@ class Agent():
             "User conversation", 
             f"Extracted profile: mood={profile['mood']}",
         )
+        # STEP 1 VALIDATE
+        raw_mood = profile['mood']
+        validate_profile(profile)
+        if profile['mood'] != raw_mood:
+            self.log_step(
+                "VALIDATE",
+                f"Raw profile: mood={raw_mood}",
+                f"Validated profile: mood={profile['mood']}",
+            )
         # STEP 2 (RETRIEVE)
         candidates = retrieve_candidates(profile, n=20)
         self.log_step(
@@ -39,12 +49,28 @@ class Agent():
             f"Profile: mood={profile['mood']}", 
             f"Found {len(candidates)} candidates",
         )
+        # STEP 2 CHECK CANDIDATES
+        passed = check_candidates(candidates)
+        self.log_step(
+            "CHECK_CANDIDATES",
+            f"{len(candidates)} candidates retrieved",
+            f"{'PASS' if passed else 'FAIL'} (minimum: 5)",
+        )
+        if not passed:
+            return [], self.steps
         # STEP 3 (SCORE)
         top_5 = rank_candidates(candidates, profile, k=5)
         self.log_step(
             "SCORE",
             f"{len(candidates)} candidates",
             f"Top: {top_5[0]['title']} ({top_5[0]['score']:.2f})",
+        )
+        # STEP 3 GUARDRAILS
+        report = run_output_guardrails(top_5)
+        self.log_step(
+            "GUARDRAILS",
+            f"{len(top_5)} recommendations",
+            f"{'PASS' if report['passed'] else 'FAIL'}: {report['issues']}",
         )
         # STEP 4 (EXPLAIN)
         explanations = generate_explanations(top_5, conversation_messages, profile)
@@ -60,14 +86,19 @@ class Agent():
             f'- "{s["title"]}" by {s["artist"]} ({s["genre"]}) - score: {s["score"]:.2f}'
             for s in top_5
         )
+        guardrail_note = ""
+        if not report["passed"]:
+            guardrail_note = f"\nAutomated checks found issues: {', '.join(report['issues'])}"
         prompt =f"""
                 Review these music recommendations for someone who wanted: {profile['mood']}
 
                 {song_list}
+                {guardrail_note}
 
                 Check:
                 1. Are at least 2 different genres represented?
                 2. Does one feature dominate all scores?
+                3. Are there any issues noted above?
 
                 Respond with exactly PASS or FAIL on the first line, then a short reason.
                 """

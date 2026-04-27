@@ -1,4 +1,4 @@
-from llm_client import chat
+from .llm_client import chat
 
 SYSTEM_PROMPT = """
                 You're writing short explanations for why each song was recommended.
