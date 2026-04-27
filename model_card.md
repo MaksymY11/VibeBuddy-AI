@@ -87,39 +87,33 @@ The system uses a 5-step agentic pipeline:
 
 ## 7. Evaluation
 
-These tests were originally documented against the baseline system (Module 3). Phase 4 guardrails now address tests 1 and 3 directly.
+### Automated Eval Harness (`python eval_harness.py`)
 
-Test 1: Out-of-range Extremist
+7 test cases targeting documented failure modes from the baseline system and new edge cases. Each test calls the full agent pipeline (retrieve → score → explain → reflect) and checks a specific pass condition.
 
-- Tested with user_prefs = {"valence score": -2.0}
-- **Baseline:** Breaks the scoring formula due to having out of range values (beyond [0,1])
-- **With guardrails:** `validate_profile` clamps all values to 0.0–1.0 before scoring
+| Test | Input | Pass Condition | Result |
+|------|-------|----------------|--------|
+| Energy dominance | energy=0.9, all others=0.5 | Not all 5 songs have energy > 0.8 | PASS (4/5 high-energy) |
+| Contradictory preferences | energy=0.9, acousticness=0.9 | Returns results without crashing | PASS (5 results) |
+| Unknown mood | mood="cosmic void energy" | Guardrail corrects mood, results returned | PASS (corrected to "chill") |
+| Neutral user | All features=0.5 | Results span at least 2 genres | PASS (5 genres) |
+| Out-of-range values | energy=5.0, valence=-2.0 | Values clamped, results returned | PASS (energy=1.0, valence=0.0) |
+| Vague conversation | "idk play something" | LLM asks follow-up, no extraction | PASS |
+| Refinement | Low energy → high energy | Second run has higher avg energy | PASS (0.47 → 0.79) |
 
-  ![Test_1](docs/Test1.png)
+### Unit and Integration Tests
 
-Test 2: Contradictory Acoustic Lover
+- **`tests/test_guardrails.py`** — 18 pytest tests covering `validate_mood`, `validate_profile`, `validate_input`, `check_diversity`, `check_duplicates`, `check_relevance`, `check_candidates`, and `run_output_guardrails`. No API calls.
+- **`tests/test_retriever.py`** — 4 pytest tests verifying ChromaDB returns results, result structure matches expected keys, `n` parameter is respected, and similarity search returns directionally relevant songs.
 
-- Tested with user_prefs = {"energy_score": 1.0, "valence_score": 1.0, "likes_acoustic": True}
-- High energy songs are rarely acoustic, resulting in least-bad compromises rather than strong matches
-- **With guardrails:** `check_relevance` flags low average scores, visible in the pipeline log
+### Baseline Comparison
 
-![Test_2](docs/Test2.png)
+These failure modes were originally documented against the baseline system (5 features, 18 songs, no guardrails):
 
-Test 3: Unknown Mood String
-
-- Tested with mood string that is a typo/not in catalog user_prefs = {"mood": "melancholic-vibes-2026"}
-- **Baseline:** Mood contribution becomes 0 for each song, feature is silently dropped
-- **With guardrails:** `validate_mood` fuzzy-matches via `difflib` (e.g., "melancholic" → "melancholy"), falls back to "chill" if no match
-
-![Test_3](docs/Test3.png)
-
-Test 4: Perfectly Neutral User
-
-- Tested with user_prefs = {"energy_score": 0.5, "valence_score": 0.5, "dance_score": 0.5,
-  "likes_acoustic": False, "mood": "sad"}
-- Exposes bias, due to ranking being dominated entirely by mood match and acousticness.
-
-![Test_4](docs/Test4.png)
+1. **Out-of-range values:** Baseline broke the scoring formula. Now `validate_profile` clamps all values to 0.0–1.0 before scoring.
+2. **Contradictory preferences:** Baseline returned least-bad compromises with no feedback. Now `check_relevance` flags low scores, and the reflect step acknowledges tension.
+3. **Unknown mood:** Baseline silently dropped mood contribution (scored 0). Now `validate_mood` fuzzy-matches via `difflib` or defaults to "chill".
+4. **Neutral user:** Baseline ranking was dominated by mood match and acousticness. Now the 8-feature scorer with genre diversity checks produces varied results.
 
 ---
 

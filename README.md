@@ -61,6 +61,19 @@ Run the app:
 streamlit run app.py
 ```
 
+Run the eval harness (7 automated tests covering edge cases and failure modes):
+
+```bash
+python eval_harness.py
+```
+
+Run unit tests:
+
+```bash
+pytest tests/test_guardrails.py -v   # 18 guardrail unit tests (no API calls)
+pytest tests/test_retriever.py -v    # 4 ChromaDB integration tests
+```
+
 Test the conversational elicitation standalone:
 
 ```bash
@@ -93,11 +106,15 @@ VibeBuddy-AI/
 │   ├── songs.csv               # Curated 1,710-song catalog
 │   └── train.csv               # Raw Spotify dataset
 ├── tests/
+│   ├── test_guardrails.py      # 18 unit tests for all guardrail functions
+│   ├── test_retriever.py       # 4 integration tests for ChromaDB retrieval
 │   ├── test_scorer.py
 │   ├── test_agent.py
 │   └── test_recommender.py
+├── eval_harness.py             # 7-test eval script (energy dominance, contradictions, etc.)
 ├── .env                        # API key (not committed)
 ├── model_card.md
+├── REFLECTION.md               # Base project context and development reflection
 ├── requirements.txt
 └── README.md
 ```

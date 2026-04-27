@@ -1,6 +1,7 @@
 import sys
 sys.path.insert(0, ".")
-from scorer import rank_candidates, score_song
+
+from pipeline.scorer import rank_candidates, score_song
 
 fake_profile = {
     "energy": 0.8, "valence": 0.7, "danceability": 0.6,
