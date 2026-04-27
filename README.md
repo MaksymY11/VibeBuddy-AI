@@ -6,9 +6,9 @@ Vibe Buddy AI is an AI-powered music recommendation system. Users describe their
 
 **Key capabilities:**
 - Conversational preference elicitation via Claude API
-- RAG retrieval over a real Spotify audio features catalog (ChromaDB + cosine similarity)
+- Genre-aware RAG retrieval over a real Spotify audio features catalog (ChromaDB + cosine similarity)
 - Agentic orchestration with observable intermediate reasoning steps
-- Input/output guardrails and self-critique
+- Input/output guardrails, genre validation, and self-critique
 - Automated eval harness covering known edge cases
 
 ---
@@ -23,15 +23,15 @@ Vibe Buddy AI is an AI-powered music recommendation system. Users describe their
 
 ### Recommendation Pipeline
 1. User describes their mood in natural language
-2. LLM extracts structured preferences (8 features + mood) from the conversation
-3. **Input guardrails** validate and clean the extracted profile (value clamping, fuzzy mood matching)
+2. LLM extracts structured preferences (8 features + mood + genre hint) from the conversation
+3. **Input guardrails** validate and clean the extracted profile (value clamping, fuzzy mood matching, genre alias resolution)
 4. Preferences are converted to an 8-dimensional query vector
-5. ChromaDB retrieves the 20 most similar songs (candidates)
+5. ChromaDB retrieves the 20 most similar songs, filtered by genre when a genre hint is present (backfills with unfiltered results if needed)
 6. Candidate count is verified before scoring
-7. Scorer ranks candidates using weighted distance and selects the top 5
-8. **Output guardrails** check genre diversity, duplicate artists, and relevance scores
+7. Scorer ranks candidates using weighted distance (genre match bonus of 1.5 when genre hint is present) and selects the top 5
+8. **Output guardrails** check genre diversity (skipped when user requested a specific genre), duplicate artists, and relevance scores
 9. LLM generates natural-language explanations for each recommendation
-10. LLM self-critiques recommendations (informed by guardrail results), retries once if needed
+10. LLM self-critiques recommendations (informed by guardrail results, genre-aware), retries once if needed
 
 ---
 
@@ -92,16 +92,16 @@ VibeBuddy-AI/
 │   ├── agent.py                # Agentic orchestrator (multi-step pipeline)
 │   ├── conversation.py         # Multi-turn conversation manager + preference extraction
 │   ├── explainer.py            # LLM explanation generation
-│   ├── guardrails.py           # Input validation, output checks, prompt injection detection
+│   ├── guardrails.py           # Input validation, output checks, genre validation, prompt injection detection
 │   ├── llm_client.py           # Claude API wrapper (prompt caching, model selection)
 │   ├── rate_limiter.py         # Session-level cost controls (flow + turn caps)
-│   └── scorer.py               # Weighted distance scoring (8 features)
+│   └── scorer.py               # Weighted distance scoring (8 features + genre bonus)
 ├── src/
 │   └── recommender.py          # Original scoring logic (baseline, preserved for eval)
 ├── utils/
 │   ├── curate_dataset.py       # Spotify CSV → curated songs.csv
 │   ├── data_loader.py          # CSV → ChromaDB ingestion
-│   └── retriever.py            # ChromaDB query wrapper
+│   └── retriever.py            # ChromaDB query wrapper (genre-filtered + unfiltered fallback)
 ├── data/
 │   ├── songs.csv               # Curated 1,710-song catalog
 │   └── train.csv               # Raw Spotify dataset

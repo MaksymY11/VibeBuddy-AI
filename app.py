@@ -263,11 +263,11 @@ CARD_COLORS = ["#39ff14","#00e836","#00c82d","#00b025","#009a1e"]
 def render_song_card(song, rank):
     color = CARD_COLORS[(rank - 1) % len(CARD_COLORS)]
     score = song.get("score", 0)
-    score_pct = min(int((score/9.25)*100), 100)
+    score_pct = min(int((score/10.75)*100), 100)
     title = song.get("title", "Unknown")
     artist = song.get("artist", "Unknown")
     genre = song.get("genre", "")
-    explanation = song.get("explanation", "")
+    explanation = explanation = song.get("explanation", "").replace('"', '&quot;').replace('<', '&lt;').replace('>','&gt;')
     return f"""
     <div style="
         display:flex; border-radius:3px; overflow:hidden; margin-bottom:8px;
@@ -377,6 +377,7 @@ with st.sidebar:
         st.markdown('<div style="font-size:0.7rem;letter-spacing:0.14em;color:#5aaa5a;margin-top:12px;margin-bottom:8px;">EXTRACTED PROFILE</div>', unsafe_allow_html=True)
         p = st.session_state.last_profile
         profile_html = f'<p style="margin:2px 0;font-size:0.72rem;color:#5aaa5a;">mood: <span style="color:#39ff14;">{p["mood"]}</span></p>'
+        profile_html += f'<p style="margin:2px 0;font-size:0.72rem;color:#5aaa5a;">genre_hint: <span style="color:#39ff14;">{p["genre_hint"]}</span></p>'
         for feat in ["energy","valence","danceability","acousticness","instrumentalness","liveness","speechiness","tempo_bpm"]:
             profile_html += f'<p style="margin:1px 0;font-size:0.72rem;color:#5aaa5a;">{feat}: <span style="color:#7acc7a;">{p[feat]:.2f}</span></p>'
         st.markdown(profile_html, unsafe_allow_html=True)

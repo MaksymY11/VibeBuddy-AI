@@ -35,15 +35,23 @@ class Agent():
         )
         # STEP 1 VALIDATE
         raw_mood = profile['mood']
+        raw_genre = profile.get('genre_hint', '')
         validate_profile(profile)
-        if profile['mood'] != raw_mood:
+        if profile['mood'] != raw_mood or profile.get('genre_hint', '') != raw_genre:
             self.log_step(
                 "VALIDATE",
-                f"Raw profile: mood={raw_mood}",
-                f"Validated profile: mood={profile['mood']}",
+                f"Raw profile: mood={raw_mood}, genre={raw_genre}",
+                f"Validated profile: mood={profile['mood']}, genre={profile['genre_hint']}",
+            )
+        else:
+            self.log_step(
+                "VALIDATE",
+                f"Profile : mood={profile['mood']}",
+                "No changes needed",
             )
         # STEP 2 (RETRIEVE)
-        candidates = retrieve_candidates(profile, n=20)
+        genre_hint = profile.get("genre_hint", "")
+        candidates = retrieve_candidates(profile, n=20, genre_hint=genre_hint)
         self.log_step(
             "RETRIEVE", 
             f"Profile: mood={profile['mood']}", 
@@ -66,7 +74,7 @@ class Agent():
             f"Top: {top_5[0]['title']} ({top_5[0]['score']:.2f})",
         )
         # STEP 3 GUARDRAILS
-        report = run_output_guardrails(top_5)
+        report = run_output_guardrails(top_5, skip_diversity=bool(genre_hint))
         self.log_step(
             "GUARDRAILS",
             f"{len(top_5)} recommendations",
@@ -89,6 +97,7 @@ class Agent():
         guardrail_note = ""
         if not report["passed"]:
             guardrail_note = f"\nAutomated checks found issues: {', '.join(report['issues'])}"
+        genre_note = f"(The user specifically requrest {genre_hint}, so same-genre results are expected.)" if genre_hint else ""
         prompt =f"""
                 Review these music recommendations for someone who wanted: {profile['mood']}
 
@@ -96,7 +105,7 @@ class Agent():
                 {guardrail_note}
 
                 Check:
-                1. Are at least 2 different genres represented?
+                1. Are at least 2 different genres represented? {genre_note}
                 2. Does one feature dominate all scores?
                 3. Are there any issues noted above?
 
@@ -108,16 +117,19 @@ class Agent():
             model ="claude-haiku-4-5-20251001",
             temperature=0
         )
-        verdict = response.strip().split("\n")[0]
+        lines = response.strip().split("\n")
+        verdict = lines[0]
+        reason = lines[1] if len(lines)>1 else ""
 
         if "FAIL" in verdict and self.max_retries > 0:
             self.max_retries -= 1
             self.log_step(
                 "REFLECT",
                 f"{len(top_5)} recommendations",
-                f"Result: {verdict} - retrying",
+                f"Result: {verdict} - {reason} - retrying",
             )
-            candidates = retrieve_candidates(profile, n=30)
+            genre_hint = profile.get("genre_hint", "")
+            candidates = retrieve_candidates(profile, n=30, genre_hint=genre_hint)
             top_5 = rank_candidates(candidates, profile, k=5)
             explanations = generate_explanations(top_5, conversation_messages, profile)
             for i, song in enumerate(top_5):
@@ -126,7 +138,7 @@ class Agent():
             self.log_step(
                 "REFLECT",
                 f"{len(top_5)} recommendations",
-                f"Result: {verdict}"
+                f"Result: {verdict} - {reason}"
             )
         return top_5, self.steps
 

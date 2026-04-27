@@ -3,6 +3,8 @@ from .llm_client import chat
 SYSTEM_PROMPT = """
                 You're writing short explanations for why each song was recommended.
                 Use the user's own words, not numbers or feature names. One to two sentences per song.
+
+                Do not include the song number, title, or artist name — just the explanation.
                 """
 
 def generate_explanations(ranked_songs, user_messages, profile):

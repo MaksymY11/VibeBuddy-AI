@@ -19,28 +19,30 @@ Vibe Buddy takes natural-language mood descriptions (e.g., "I just finished a wo
 
 The system uses a 5-step agentic pipeline:
 
-1. **Elicit:** A conversational LLM (Claude Haiku) asks the user about their mood and extracts structured preferences — 8 numeric features (energy, valence, danceability, acousticness, instrumentalness, liveness, speechiness, tempo) plus a mood label — via tool use.
-2. **Retrieve:** The extracted preferences become an 8-dimensional vector. ChromaDB finds the 20 nearest songs by cosine similarity.
-3. **Score:** A weighted distance scorer ranks the 20 candidates. Weights: energy (2.0), valence (1.5), danceability (1.5), acousticness (1.0), tempo (0.75), instrumentalness/liveness/speechiness (0.5 each). Mood adds a 1.0 bonus on exact match. Top 5 are selected.
+1. **Elicit:** A conversational LLM (Claude Haiku) asks the user about their mood and extracts structured preferences — 8 numeric features (energy, valence, danceability, acousticness, instrumentalness, liveness, speechiness, tempo) plus a mood label and an optional genre hint — via tool use. If the LLM fails to extract after 3 user turns, extraction is forced via a synthetic follow-up.
+2. **Retrieve:** The extracted preferences become an 8-dimensional vector. If a genre hint is present, ChromaDB first retrieves songs filtered by that genre, then backfills with unfiltered results if needed. Without a genre hint, retrieval is purely similarity-based across all 114 genres.
+3. **Score:** A weighted distance scorer ranks the 20 candidates. Weights: energy (2.0), valence (1.5), danceability (1.5), acousticness (1.0), tempo (0.75), instrumentalness/liveness/speechiness (0.5 each). Mood adds a 1.0 bonus on exact match. Genre adds a 1.5 bonus when the song's genre matches the user's genre hint. Top 5 are selected.
 4. **Explain:** An LLM (Claude Sonnet) writes natural-language explanations for each song, referencing the user's own words rather than raw feature values.
-5. **Reflect:** An LLM (Claude Haiku) self-critiques the recommendations for genre diversity and feature dominance, informed by automated guardrail results. If it fails, the pipeline retries once with a wider candidate pool.
+5. **Reflect:** An LLM (Claude Haiku) self-critiques the recommendations for genre diversity and feature dominance, informed by automated guardrail results. When the user requested a specific genre, same-genre results are expected and not penalized. If it fails, the pipeline retries once with a wider candidate pool.
 
 ### Guardrails & Reliability
 
 **Input guardrails:**
 - Profile values clamped to 0.0–1.0 (handles out-of-range extraction)
 - Fuzzy mood matching via `difflib` (e.g., "chil" → "chill", unknown moods default to "chill")
+- Genre hint validation with alias mapping (e.g., "rap" → "hip-hop", "r&b" → "r-n-b") and fuzzy matching against the full catalog of 114 genres
 - Input validation rejects empty/too-short messages before they reach the LLM
 - Prompt injection detection using `difflib.SequenceMatcher` with sliding-window fuzzy matching against known injection patterns
+- HTML escaping on LLM-generated explanations before rendering in the UI
 
 **Output guardrails:**
-- Genre diversity check: top 5 must include at least 2 genres
+- Genre diversity check: top 5 must include at least 2 genres (skipped when user requested a specific genre)
 - Duplicate artist check: no artist appears more than once in top 5
-- Relevance threshold: average match score must exceed a minimum (default 5.0/9.25)
+- Relevance threshold: average match score must exceed a minimum
 - Candidate count verification: ensures enough songs were retrieved before scoring
 
 **Cost controls:**
-- Session rate limiter: 5 recommendation flows per session, 4 conversation turns per flow
+- Session rate limiter: 3 recommendation flows per session, 4 conversation turns per flow
 - Model tiering: Haiku for extraction/critique, Sonnet for explanations
 - Anthropic console spending cap as a hard monthly limit
 
@@ -62,10 +64,11 @@ The system uses a 5-step agentic pipeline:
 ## 5. Strengths
 
 - Natural input: users describe their mood in plain language instead of tuning numeric sliders, lowering the barrier to use.
+- Genre awareness: when users mention a genre or artist, the system prioritizes songs from that genre via filtered retrieval and a scoring bonus, with alias mapping for common name variants (e.g., "rap" → "hip-hop").
 - Large catalog: 1,710 songs across 114 genres provides real diversity compared to the original 18-song set.
 - Human-readable explanations: LLM-generated explanations reference the user's own words, making recommendations feel personalized.
-- Self-critique: the reflect step catches low-diversity results (e.g., all same genre) and retries automatically.
-- Observable reasoning: every pipeline step is logged with timestamps, making the system's decisions transparent.
+- Self-critique: the reflect step catches low-diversity results (e.g., all same genre) and retries automatically, with genre-aware logic that avoids penalizing same-genre results when the user requested a specific genre.
+- Observable reasoning: every pipeline step is logged with timestamps and displayed in the sidebar, making the system's decisions transparent.
 
 ---
 
@@ -82,6 +85,12 @@ The system uses a 5-step agentic pipeline:
 
 4. LLM Extraction Variance
    - Different phrasings of the same intent can produce different numeric profiles, since the LLM infers feature values from conversation. This introduces non-determinism even at temperature=0.
+
+5. Single-Genre Matching
+   - Genre hints match exactly one genre at a time. A user requesting "rock" will only get songs tagged as "rock" — not "alt-rock", "hard-rock", or "psych-rock". Related sub-genres require a genre similarity map (see Future Work).
+
+6. Extraction Reliability
+   - The LLM occasionally fails to call the extraction tool even after sufficient conversation turns. A forced retry mechanism mitigates this, but adds latency when triggered.
 
 ---
 
@@ -123,7 +132,7 @@ These failure modes were originally documented against the baseline system (5 fe
 - Learned weights: replace hard-coded weights with values fit from user feedback or listening history.
 - Real-time Spotify integration: query the Spotify API for live catalog data instead of a static CSV.
 - User history: track past recommendations to avoid repeats and learn preferences over sessions.
-- Genre filtering: allow users to exclude genres they dislike (e.g., filtering out "kids" genre results).
+- Multi-genre matching: expand genre hints to include related genres (e.g., "rock" → rock, alt-rock, hard-rock, indie) using a genre similarity map instead of single exact match.
 
 ---
 

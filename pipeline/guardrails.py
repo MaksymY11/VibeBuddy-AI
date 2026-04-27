@@ -1,9 +1,12 @@
 import difflib
+from utils.retriever import get_all_genres
 
 VALID_MOODS = {
     "excited", "happy", "energetic", "aggressive", "intense", "fiery",
     "peaceful", "chill", "tender", "melancholy", "moody", "sad"
 }
+
+VALID_GENRES = get_all_genres()
 
 def validate_mood(mood):
     """
@@ -19,17 +22,47 @@ def validate_mood(mood):
     
     return match[0] if match else "chill"
 
+def validate_genre(genre_hint):
+    if not genre_hint:
+        return ""
+    
+    genre_hint = genre_hint.lower().strip()
+    aliases = {
+        "r&b": "r-n-b",
+        "rnb": "r-n-b",
+        "rap": "hip-hop",
+        "punk rock": "punk-rock",
+        "alt rock": "alt-rock",
+        "hard rock": "hard-rock",
+        "heavy metal": "heavy-metal",
+        "death metal": "death-metal",
+        "black metal": "black-metal",
+        "drum and bass": "drum-and-bass",
+        "deep house": "deep-house",
+        "synth pop": "synth-pop",
+        "indie pop": "indie-pop",
+        "world": "world-music",
+    }
+    if genre_hint in aliases:
+        return aliases[genre_hint]
+    
+    if genre_hint in VALID_GENRES:
+        return genre_hint
+    match = difflib.get_close_matches(genre_hint, VALID_GENRES, n=1, cutoff=0.5)
+    return match[0] if match else ""
+
 
 def validate_profile(profile):
     """
     Takes the raw extracted profile dict and cleans it up.
     Loops through each feature key, and clamps the value to 0.0-1.0
-    Calls validate_mood on profile["mood"] as well.
+    Calls validate_mood on profile["mood"] and profile["genre_hint"] as well.
     """
     for feat, val in profile.items():
-        if feat != "mood":
+        if feat not in ("mood","genre_hint"):
             profile[feat] = max(0.0, min(1.0, float(val)))
     profile["mood"] = validate_mood(profile["mood"])
+    profile["genre_hint"] = validate_genre(profile["genre_hint"])
 
     return profile
 
@@ -99,12 +132,12 @@ def check_candidates(candidates, minimum=5):
     return len(candidates) >= minimum
 
 
-def run_output_guardrails(recommendations):
+def run_output_guardrails(recommendations, skip_diversity=False):
     """
     Runs all three output checks in one call and returns a structured report
     """
     issues = []
-    if not check_diversity(recommendations):
+    if not skip_diversity and not check_diversity(recommendations):
         issues.append("Low genre diversity.")
     if not check_duplicates(recommendations):
         issues.append("Duplicate artists.")
