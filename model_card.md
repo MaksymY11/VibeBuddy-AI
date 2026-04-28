@@ -23,7 +23,7 @@ The system uses an 8-step agentic pipeline (see [architecture diagram](assets/ar
 2. **Retrieve:** The extracted preferences become an 8-dimensional vector. If a genre hint is present, ChromaDB first retrieves songs filtered by that genre, then backfills with unfiltered results if needed. Without a genre hint, retrieval is purely similarity-based across all 114 genres.
 3. **Score:** A weighted distance scorer ranks the 20 candidates. Weights: energy (2.0), valence (1.5), danceability (1.5), acousticness (1.0), tempo (0.75), instrumentalness/liveness/speechiness (0.5 each). Mood adds a 1.0 bonus on exact match. Genre adds a 1.5 bonus when the song's genre matches the user's genre hint. Top 5 are selected.
 4. **Explain:** An LLM (Claude Sonnet) writes natural-language explanations for each song, referencing the user's own words rather than raw feature values.
-5. **Reflect:** An LLM (Claude Haiku) self-critiques the recommendations for genre diversity and feature dominance, informed by automated guardrail results. When the user requested a specific genre, same-genre results are expected and not penalized. If it fails, the pipeline retries once — when a genre was requested, it keeps songs that already match and fills remaining slots with genre-filtered candidates from a wider pool; otherwise it re-retrieves and re-ranks entirely.
+5. **Reflect:** An LLM (Claude Haiku) evaluates each recommendation individually for mood and vibe fit, producing a per-song PASS/FAIL verdict. Songs that pass are kept; songs that fail are replaced from a wider candidate pool (n=30) and re-ranked. The pipeline retries once on any failure, re-running guardrails and explanations for the updated set.
 
 ### Guardrails & Reliability
 
@@ -67,7 +67,7 @@ The system uses an 8-step agentic pipeline (see [architecture diagram](assets/ar
 - Genre awareness: when users mention a genre or artist, the system prioritizes songs from that genre via filtered retrieval and a scoring bonus, with alias mapping for common name variants (e.g., "rap" → "hip-hop").
 - Large catalog: 1,710 songs across 114 genres provides real diversity compared to the original 18-song set.
 - Human-readable explanations: LLM-generated explanations reference the user's own words, making recommendations feel personalized.
-- Self-critique: the reflect step catches low-diversity results (e.g., all same genre) and retries automatically, with genre-aware logic that avoids penalizing same-genre results when the user requested a specific genre.
+- Self-critique: the reflect step evaluates each song individually for mood/vibe fit, keeping songs that pass and replacing failures from a wider candidate pool on retry.
 - Observable reasoning: every pipeline step is logged with timestamps and displayed in the sidebar, making the system's decisions transparent.
 
 ---

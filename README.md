@@ -31,7 +31,7 @@ The system runs an 8-step pipeline orchestrated by `pipeline/agent.py`:
 5. **SCORE** — Weighted distance across 8 audio features + mood/genre bonuses → top 5
 6. **GUARDRAILS** — Check genre diversity, duplicate artists, relevance threshold
 7. **EXPLAIN** — Generate natural-language explanations referencing the user's own words
-8. **REFLECT** — LLM self-critique informed by guardrail results; retry once on failure (genre-aware: keeps matching songs, replaces mismatches)
+8. **REFLECT** — LLM evaluates each song individually for mood/vibe fit; keeps passing songs, replaces failures from a wider candidate pool on retry
 
 Every step is logged with timestamps and displayed in the sidebar for full transparency.
 
@@ -92,7 +92,7 @@ User:  "Acoustic and mellow, maybe some folk vibes"
 → Extracts: energy=0.3, acousticness=0.85, mood=peaceful, genre_hint=folk
 → Retrieves 20 candidates (filtered by folk, backfilled)
 → Scores and selects top 5
-→ Self-critique: PASS (3 genres represented)
+→ Self-critique: PASS (5/5 songs fit the vibe)
 
 Recommendations:
   1. "Harvest Moon" by Neil Young (folk) — Score: 9.2

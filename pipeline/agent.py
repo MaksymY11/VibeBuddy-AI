@@ -91,59 +91,57 @@ class Agent():
         )
         # STEP 8 (REFLECT)
         song_list = "\n".join(
-            f'- "{s["title"]}" by {s["artist"]} ({s["genre"]}) - score: {s["score"]:.2f}'
-            for s in top_5
+            f'{i+1}. "{s["title"]}" by {s["artist"]} ({s["genre"]}) - score: {s["score"]:.2f}'
+            for i, s in enumerate(top_5)
         )
         guardrail_note = ""
         if not report["passed"]:
             guardrail_note = f"\nAutomated checks found issues: {', '.join(report['issues'])}"
         if genre_hint:
             user_wanted = f"{profile['mood']} mood, specifically {genre_hint} genre"
-            diversity_check = f"1. The user explicitly requested {genre_hint}, so most results SHOULD be {genre_hint}. Only flag diversity if results don't match the requested genre."
         else:
             user_wanted = f"{profile['mood']} mood (no genre preference)"
-            diversity_check = "1. Are at least 2 different genres represented?"
-        prompt = f"""
-                Review these music recommendations for someone who wanted: {user_wanted}
+        prompt = f"""Review these music recommendations for someone who wanted: {user_wanted}
 
-                {song_list}
-                {guardrail_note}
+        {song_list}
+        {guardrail_note}
 
-                Check:
-                {diversity_check}
-                2. Does one feature dominate all scores?
-                3. Are there any issues noted above?
+        For each song, decide if it fits the user's requested mood and vibe.
+        Respond with exactly one line per song: the song number followed by PASS or FAIL.
+        After all 5 lines, write a short explanation of your reasoning.
 
-                Respond with exactly PASS or FAIL on the first line, then a short reason.
-                """
-        verdict, reason = self._parse_reflect_response(
-            chat(
-                "You are a music recommendation reviewer.",
-                [{"role": "user", "content": prompt}],
-                model="claude-haiku-4-5-20251001",
-                temperature=0,
-            )
+        Example format:
+        1. PASS
+        2. FAIL
+        3. PASS
+        4. PASS
+        5. FAIL
+        Reason: [your reasoning ...]
+        """
+        response = chat(
+            "You are a music recommendation reviewer.",
+            [{"role": "user", "content": prompt}],
+            model="claude-haiku-4-5-20251001",
+            temperature=0,
         )
+        verdicts, reason = self._parse_per_song_reflect(response, len(top_5))
+        keepers = [top_5[i] for i, v in enumerate(verdicts) if v]
+        fail_count = sum(1 for v in verdicts if not v)
 
-        if "FAIL" in verdict and self.max_retries > 0:
+        if fail_count > 0 and self.max_retries > 0:
             self.max_retries -= 1
+            slots = 5 - len(keepers)
             self.log_step(
                 "REFLECT",
                 f"{len(top_5)} recommendations",
-                f"FAIL: {reason} — retrying with wider pool",
+                f"FAIL ({fail_count}/{len(top_5)} songs): {reason} — replacing {slots}",
             )
             genre_hint = profile.get("genre_hint", "")
-            if genre_hint:
-                keepers = [s for s in top_5 if s["genre"] == genre_hint]
-                slots = 5 - len(keepers)
-                candidates = retrieve_candidates(profile, n=30, genre_hint=genre_hint)
-                existing_titles = {s["title"] for s in keepers}
-                filtered = [c for c in candidates if c["title"] not in existing_titles and c["genre"] == genre_hint]
-                replacements = rank_candidates(filtered or candidates, profile, k=slots)
-                top_5 = sorted(keepers + replacements, key=lambda x: x["score"], reverse=True)
-            else:
-                candidates = retrieve_candidates(profile, n=30, genre_hint=genre_hint)
-                top_5 = rank_candidates(candidates, profile, k=5)
+            candidates = retrieve_candidates(profile, n=30, genre_hint=genre_hint)
+            exclude_titles = {s["title"] for s in top_5}
+            fresh = [c for c in candidates if c["title"] not in exclude_titles]
+            replacements = rank_candidates(fresh or candidates, profile, k=slots)
+            top_5 = sorted(keepers + replacements, key=lambda x: x["score"], reverse=True)
 
             report = run_output_guardrails(top_5, skip_diversity=bool(genre_hint))
             self.log_step(
@@ -164,19 +162,28 @@ class Agent():
             self.log_step(
                 "REFLECT",
                 f"{len(top_5)} recommendations (retry)",
-                f"Retried after: {reason}",
+                f"{reason}",
             )
         else:
             self.log_step(
                 "REFLECT",
                 f"{len(top_5)} recommendations",
-                f"Result: {verdict} — {reason}",
+                f"PASS ({len(keepers)}/{len(verdicts)} songs) — {reason}",
             )
         return top_5, self.steps
 
     @staticmethod
-    def _parse_reflect_response(response):
+    def _parse_per_song_reflect(response, count):
         lines = [line.strip() for line in response.strip().split("\n") if line.strip()]
-        verdict = lines[0] if lines else "PASS"
-        reason = " ".join(lines[1:]) if len(lines) > 1 else "No reason given"
-        return verdict, reason
+        verdicts = []
+        reason_lines = []
+        for line in lines:
+            upper = line.upper()
+            if "FAIL" in upper:
+                verdicts.append(False)
+            elif "PASS" in upper:
+                verdicts.append(True)
+            else:
+                reason_lines.append(line)
+        reason = " ".join(reason_lines) if reason_lines else "No reason given"
+        return verdicts, reason
