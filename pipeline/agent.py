@@ -33,7 +33,7 @@ class Agent():
             "User conversation", 
             f"Extracted profile: mood={profile['mood']}",
         )
-        # STEP 1 VALIDATE
+        # STEP 2 (VALIDATE)
         raw_mood = profile['mood']
         raw_genre = profile.get('genre_hint', '')
         validate_profile(profile)
@@ -49,7 +49,7 @@ class Agent():
                 f"Profile : mood={profile['mood']}",
                 "No changes needed",
             )
-        # STEP 2 (RETRIEVE)
+        # STEP 3 (RETRIEVE)
         genre_hint = profile.get("genre_hint", "")
         candidates = retrieve_candidates(profile, n=20, genre_hint=genre_hint)
         self.log_step(
@@ -57,7 +57,7 @@ class Agent():
             f"Profile: mood={profile['mood']}", 
             f"Found {len(candidates)} candidates",
         )
-        # STEP 2 CHECK CANDIDATES
+        # STEP 4 (CHECK CANDIDATES)
         passed = check_candidates(candidates)
         self.log_step(
             "CHECK_CANDIDATES",
@@ -66,21 +66,21 @@ class Agent():
         )
         if not passed:
             return [], self.steps
-        # STEP 3 (SCORE)
+        # STEP 5 (SCORE)
         top_5 = rank_candidates(candidates, profile, k=5)
         self.log_step(
             "SCORE",
             f"{len(candidates)} candidates",
             f"Top: {top_5[0]['title']} ({top_5[0]['score']:.2f})",
         )
-        # STEP 3 GUARDRAILS
+        # STEP 6 (GUARDRAILS)
         report = run_output_guardrails(top_5, skip_diversity=bool(genre_hint))
         self.log_step(
             "GUARDRAILS",
             f"{len(top_5)} recommendations",
             f"{'PASS' if report['passed'] else 'FAIL'}: {report['issues']}",
         )
-        # STEP 4 (EXPLAIN)
+        # STEP 7 (EXPLAIN)
         explanations = generate_explanations(top_5, conversation_messages, profile)
         for i, song in enumerate(top_5):
             song['explanation'] = explanations[i]
@@ -89,7 +89,7 @@ class Agent():
             f"{len(top_5)} songs",
             f"Generated {len(explanations)} explanations"
         )
-        # STEP 5 (REFLECT)
+        # STEP 8 (REFLECT)
         song_list = "\n".join(
             f'- "{s["title"]}" by {s["artist"]} ({s["genre"]}) - score: {s["score"]:.2f}'
             for s in top_5

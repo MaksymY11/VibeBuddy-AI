@@ -1,83 +1,128 @@
-# Vibe Buddy AI — Music Recommender
+# Vibe Buddy AI
 
-## Project Summary
+An AI-powered music recommendation system that turns natural-language mood descriptions into personalized song picks. Uses **RAG** (Retrieval-Augmented Generation) to search a real music catalog, an **agentic pipeline** for multi-step reasoning, and **guardrails** for reliability. Built with Claude, ChromaDB, and Streamlit.
 
-Vibe Buddy AI is an AI-powered music recommendation system. Users describe their mood in natural language (e.g., "I'm feeling groovy" or "chill rainy day vibes"), and the system uses conversational AI to extract preferences, retrieves matching songs from a 1,710-song catalog via RAG, and returns personalized recommendations with natural-language explanations.
-
-**Key capabilities:**
-- Conversational preference elicitation via Claude API
-- Genre-aware RAG retrieval over a real Spotify audio features catalog (ChromaDB + cosine similarity)
-- Agentic orchestration with observable intermediate reasoning steps
-- Input/output guardrails, genre validation, and self-critique
-- Automated eval harness covering known edge cases
+<!-- TODO: Replace with an actual screenshot of the app running -->
+<!-- ![Vibe Buddy AI Screenshot](assets/screenshot.png) -->
 
 ---
 
-## How The System Works
+## Highlights
 
-### Data Pipeline
-- **Catalog:** 1,710 songs curated from real Spotify audio features data, balanced across 114 genres (15 songs per genre)
-- **Features (8 numeric):** energy, valence, danceability, acousticness, instrumentalness, liveness, speechiness, tempo — all normalized to 0.0-1.0
-- **Mood (12 labels):** derived using Russell's Circumplex Model of Affect (valence x energy quadrants) with acousticness and danceability as tiebreakers
-- **Vector store:** ChromaDB with cosine similarity over 8-dimensional feature vectors
-
-### Recommendation Pipeline
-1. User describes their mood in natural language
-2. LLM extracts structured preferences (8 features + mood + genre hint) from the conversation
-3. **Input guardrails** validate and clean the extracted profile (value clamping, fuzzy mood matching, genre alias resolution)
-4. Preferences are converted to an 8-dimensional query vector
-5. ChromaDB retrieves the 20 most similar songs, filtered by genre when a genre hint is present (backfills with unfiltered results if needed)
-6. Candidate count is verified before scoring
-7. Scorer ranks candidates using weighted distance (genre match bonus of 1.5 when genre hint is present) and selects the top 5
-8. **Output guardrails** check genre diversity (skipped when user requested a specific genre), duplicate artists, and relevance scores
-9. LLM generates natural-language explanations for each recommendation
-10. LLM self-critiques recommendations (informed by guardrail results, genre-aware), retries once if needed
+- **Conversational input** — describe your mood in plain language instead of tuning sliders
+- **RAG over a 1,710-song catalog** — real Spotify audio features across 114 genres, embedded and indexed in ChromaDB for vector similarity retrieval
+- **8-step agentic pipeline** — observable reasoning from elicitation through self-critique
+- **Genre-aware retrieval** — filtered search with alias mapping ("rap" → "hip-hop") and automatic backfill
+- **Guardrails at three layers** — input validation, profile normalization, and output quality checks
+- **Automated eval harness** — 7 tests proving the system handles documented failure modes
 
 ---
 
-## Model Card
+## Architecture
 
-See the full [Model Card](model_card.md) for details on intended use, scoring logic, data, limitations, and evaluation.
+![Architecture Diagram](assets/architecture.png)
+
+The system runs an 8-step pipeline orchestrated by `pipeline/agent.py`:
+
+1. **ELICIT** — Log the structured profile extracted from conversation
+2. **VALIDATE** — Clamp features to [0,1], fuzzy-match mood and genre
+3. **RETRIEVE** — Cosine similarity search over ChromaDB (n=20), genre-filtered when applicable
+4. **CHECK CANDIDATES** — Verify enough songs were retrieved before scoring
+5. **SCORE** — Weighted distance across 8 audio features + mood/genre bonuses → top 5
+6. **GUARDRAILS** — Check genre diversity, duplicate artists, relevance threshold
+7. **EXPLAIN** — Generate natural-language explanations referencing the user's own words
+8. **REFLECT** — LLM self-critique informed by guardrail results; retry once on failure
+
+Every step is logged with timestamps and displayed in the sidebar for full transparency.
 
 ---
 
-## Setup
+## Tech Stack
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| Frontend | Streamlit | Chat interface + pipeline visualization |
+| LLM | Claude API (Anthropic) | Conversation, extraction, explanation, self-critique |
+| Vector Store | ChromaDB | Cosine similarity search over 8-D feature embeddings |
+| Data | Kaggle Spotify Tracks Genre | 1,710 songs with real audio features |
+| Testing | pytest + custom eval harness | 18 unit tests + 7 end-to-end eval tests |
+
+**Model tiering for cost control:** Haiku handles extraction and self-critique (fast, cheap). Sonnet handles explanations (higher quality). Session caps (5 flows, 4 turns each) bound API usage per user.
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Python 3.10+
+- An [Anthropic API key](https://console.anthropic.com/)
+
+### Setup
 
 ```bash
+# Clone the repo
+git clone https://github.com/MaksymY11/ai110-module3show-musicrecommendersimulation-starter.git
+cd VibeBuddy-AI
+
+# Install dependencies
 pip install -r requirements.txt
-python utils/curate_dataset.py    # generate curated songs.csv (only needed once)
-python utils/data_loader.py       # ingest into ChromaDB (only needed once)
+
+# Set your API key
+echo ANTHROPIC_API_KEY=sk-ant-...your-key... > .env
+
+# One-time data setup
+python utils/curate_dataset.py    # Curate the song catalog from raw Spotify data
+python utils/data_loader.py       # Ingest into ChromaDB
 ```
 
-Set your API key in a `.env` file at the project root:
-
-```
-ANTHROPIC_API_KEY=sk-ant-...your-key-here...
-```
-
-Run the app:
+### Run
 
 ```bash
 streamlit run app.py
 ```
 
-Run the eval harness (7 automated tests covering edge cases and failure modes):
+### Sample Interaction
 
-```bash
-python eval_harness.py
+```
+User:  "I just finished a long run, I want something to cool down to"
+Buddy: "Nice! Are you thinking acoustic and mellow, or more like a chill beat you can zone out to?"
+User:  "Acoustic and mellow, maybe some folk vibes"
+
+→ Extracts: energy=0.3, acousticness=0.85, mood=peaceful, genre_hint=folk
+→ Retrieves 20 candidates (filtered by folk, backfilled)
+→ Scores and selects top 5
+→ Self-critique: PASS (3 genres represented)
+
+Recommendations:
+  1. "Harvest Moon" by Neil Young (folk) — Score: 9.2
+     "After a long run, this is exactly the kind of warm acoustic wind-down..."
+  2. ...
 ```
 
-Run unit tests:
+---
+
+## Evaluation
+
+### Eval Harness (`python eval_harness.py`)
+
+7 automated tests targeting edge cases and documented failure modes:
+
+| Test | What it checks | Result |
+|------|---------------|--------|
+| Energy dominance | High energy doesn't monopolize all 5 results | PASS |
+| Contradictory preferences | Conflicting features don't crash the pipeline | PASS |
+| Unknown mood | Invalid mood is fuzzy-matched by guardrails | PASS |
+| Neutral user | All-0.5 profile produces genre diversity | PASS |
+| Out-of-range values | Extreme values are clamped to [0,1] | PASS |
+| Vague conversation | Underspecified input triggers follow-up, not extraction | PASS |
+| Refinement | Changing preferences produces measurably different results | PASS |
+
+### Unit Tests
 
 ```bash
-pytest tests/test_guardrails.py -v   # 18 guardrail unit tests (no API calls)
-pytest tests/test_retriever.py -v    # 4 ChromaDB integration tests
-```
-
-Test the conversational elicitation standalone:
-
-```bash
-python -m pipeline.conversation
+pytest tests/test_guardrails.py -v   # 18 tests — all guardrail functions, no API calls
+pytest tests/test_retriever.py -v    # 4 tests — ChromaDB integration
 ```
 
 ---
@@ -86,35 +131,38 @@ python -m pipeline.conversation
 
 ```
 VibeBuddy-AI/
-├── app.py                      # Streamlit UI
+├── app.py                      # Streamlit UI (chat interface + pipeline sidebar)
 ├── pipeline/
-│   ├── __init__.py
-│   ├── agent.py                # Agentic orchestrator (multi-step pipeline)
-│   ├── conversation.py         # Multi-turn conversation manager + preference extraction
-│   ├── explainer.py            # LLM explanation generation
-│   ├── guardrails.py           # Input validation, output checks, genre validation, prompt injection detection
-│   ├── llm_client.py           # Claude API wrapper (prompt caching, model selection)
-│   ├── rate_limiter.py         # Session-level cost controls (flow + turn caps)
-│   └── scorer.py               # Weighted distance scoring (8 features + genre bonus)
-├── src/
-│   └── recommender.py          # Original scoring logic (baseline, preserved for eval)
+│   ├── agent.py                # 8-step agentic orchestrator
+│   ├── conversation.py         # Multi-turn conversation + preference extraction
+│   ├── explainer.py            # LLM explanation generation (Sonnet)
+│   ├── guardrails.py           # Input/output validation, prompt injection detection
+│   ├── llm_client.py           # Claude API wrapper (prompt caching, model tiering)
+│   ├── rate_limiter.py         # Session cost controls
+│   └── scorer.py               # Weighted distance scoring (8 features + bonuses)
 ├── utils/
 │   ├── curate_dataset.py       # Spotify CSV → curated songs.csv
 │   ├── data_loader.py          # CSV → ChromaDB ingestion
-│   └── retriever.py            # ChromaDB query wrapper (genre-filtered + unfiltered fallback)
+│   └── retriever.py            # ChromaDB query (genre-filtered + backfill)
 ├── data/
-│   ├── songs.csv               # Curated 1,710-song catalog
+│   ├── songs.csv               # 1,710-song catalog (114 genres × 15 songs)
 │   └── train.csv               # Raw Spotify dataset
-├── tests/
-│   ├── test_guardrails.py      # 18 unit tests for all guardrail functions
-│   ├── test_retriever.py       # 4 integration tests for ChromaDB retrieval
-│   ├── test_scorer.py
-│   ├── test_agent.py
-│   └── test_recommender.py
-├── eval_harness.py             # 7-test eval script (energy dominance, contradictions, etc.)
-├── .env                        # API key (not committed)
-├── model_card.md
-├── REFLECTION.md               # Base project context and development reflection
-├── requirements.txt
-└── README.md
+├── tests/                      # pytest unit + integration tests
+├── eval_harness.py             # 7-test automated evaluation
+├── assets/
+│   └── architecture.png        # System architecture diagram
+├── model_card.md               # Detailed model documentation
+├── REFLECTION.md               # Development process and base project context
+└── requirements.txt
 ```
+
+---
+
+## Documentation
+
+- **[Model Card](model_card.md)** — Scoring logic, data details, limitations, bias analysis, and evaluation results
+- **[Reflection](REFLECTION.md)** — Base project context, how AI was used in development, and lessons learned
+
+---
+
+## License

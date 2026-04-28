@@ -17,7 +17,7 @@ Vibe Buddy takes natural-language mood descriptions (e.g., "I just finished a wo
 
 ## 3. How the Model Works
 
-The system uses a 5-step agentic pipeline:
+The system uses an 8-step agentic pipeline (see [architecture diagram](assets/architecture.png)). The core reasoning steps:
 
 1. **Elicit:** A conversational LLM (Claude Haiku) asks the user about their mood and extracts structured preferences — 8 numeric features (energy, valence, danceability, acousticness, instrumentalness, liveness, speechiness, tempo) plus a mood label and an optional genre hint — via tool use. If the LLM fails to extract after 3 user turns, extraction is forced via a synthetic follow-up.
 2. **Retrieve:** The extracted preferences become an 8-dimensional vector. If a genre hint is present, ChromaDB first retrieves songs filtered by that genre, then backfills with unfiltered results if needed. Without a genre hint, retrieval is purely similarity-based across all 114 genres.
@@ -53,7 +53,7 @@ The system uses a 5-step agentic pipeline:
 - **Original catalog:** 18 handcrafted songs (preserved in `data/songs_original.csv` as baseline for evaluation).
 - **Expanded catalog:** 1,710 songs curated from the Kaggle "Spotify Tracks Genre" dataset. 15 songs sampled per genre with a fixed random seed for reproducibility.
 - **Source:** Kaggle Spotify Tracks Genre dataset, containing real Spotify audio features.
-- **Features (8 numeric):** energy, valence, danceability, acousticness, instrumentalness, liveness, speechiness, tempo_bpm — all in 0.0–1.0 range (except tempo_bpm which is raw BPM).
+- **Features (8 numeric):** energy, valence, danceability, acousticness, instrumentalness, liveness, speechiness, tempo_bpm — all normalized to 0.0–1.0 range (tempo normalized by dividing by dataset max during curation).
 - **Genres:** 114 genres from the Spotify dataset, balanced at 15 songs each.
 - **Moods (12):** excited, happy, energetic, aggressive, intense, fiery, peaceful, chill, tender, melancholy, moody, sad — derived using Russell's Circumplex Model of Affect (valence × energy quadrants) with acousticness and danceability as tiebreakers within each quadrant.
 - **Curation script:** `utils/curate_dataset.py` — reads the raw Kaggle CSV, samples by genre, derives mood labels, renames columns, and outputs the final `data/songs.csv`.

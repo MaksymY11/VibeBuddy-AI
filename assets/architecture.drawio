@@ -1,0 +1,155 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="VibeBuddy Architecture" id="vibe-buddy-arch">
+    <mxGraphModel dx="1571" dy="826" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="leg_box" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;" value="" vertex="1">
+          <mxGeometry height="170" width="180" x="20" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_title" parent="1" style="text;html=1;fontSize=13;align=center;verticalAlign=middle;" value="&lt;b&gt;Legend&lt;/b&gt;" vertex="1">
+          <mxGeometry height="20" width="180" x="20" y="25" as="geometry" />
+        </mxCell>
+        <mxCell id="leg1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" value="Pipeline Step" vertex="1">
+          <mxGeometry height="20" width="160" x="30" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="leg2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" value="Guardrail Checkpoint" vertex="1">
+          <mxGeometry height="20" width="160" x="30" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="leg3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" value="LLM API Call" vertex="1">
+          <mxGeometry height="20" width="160" x="30" y="100" as="geometry" />
+        </mxCell>
+        <mxCell id="leg4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" value="UI Component" vertex="1">
+          <mxGeometry height="20" width="160" x="30" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="leg5" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" value="Data Store" vertex="1">
+          <mxGeometry height="20" width="160" x="30" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="user" parent="1" style="shape=ellipse;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#333333;fontSize=13;" value="&lt;b&gt;User&lt;/b&gt;&lt;br&gt;(Browser)" vertex="1">
+          <mxGeometry height="60" width="120" x="460" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ui" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="&lt;b&gt;Streamlit UI&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;app.py&lt;/font&gt;" vertex="1">
+          <mxGeometry height="50" width="150" x="445" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="input_guard" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="&lt;b&gt;INPUT GUARDRAILS&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;validate_input() · prompt injection detection&lt;br&gt;Rate Limiter (5 flows / 4 turns)&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="240" x="400" y="200" as="geometry" />
+        </mxCell>
+        <mxCell id="agent_container" parent="1" style="swimlane;startSize=30;rounded=1;html=1;fillColor=#F0F0F0;strokeColor=#333333;strokeWidth=2;fontSize=13;fontStyle=1;collapsible=0;swimlaneLine=0;" value="&lt;b&gt;Agent Orchestrator&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;pipeline/agent.py&lt;/font&gt;" vertex="1">
+          <mxGeometry height="845" width="340" x="350" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="elicit" parent="agent_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;1. ELICIT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Log extracted profile from conversation&lt;/font&gt;" vertex="1">
+          <mxGeometry height="50" width="240" x="50" y="45" as="geometry" />
+        </mxCell>
+        <mxCell id="validate" parent="agent_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="&lt;b&gt;2. VALIDATE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;validate_profile() · validate_mood()&lt;br&gt;validate_genre() · clamp features [0,1]&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="270" x="35" y="125" as="geometry" />
+        </mxCell>
+        <mxCell id="retrieve" parent="agent_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;3. RETRIEVE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Cosine similarity search (n=20)&lt;br&gt;Genre filter + backfill&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="240" x="50" y="215" as="geometry" />
+        </mxCell>
+        <mxCell id="check_cand" parent="agent_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="&lt;b&gt;4. CHECK CANDIDATES&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Verify minimum 5 candidates retrieved&lt;br&gt;Early exit on failure&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="270" x="35" y="305" as="geometry" />
+        </mxCell>
+        <mxCell id="scorer" parent="agent_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;5. SCORE&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Weighted distance (8 features)&lt;br&gt;Mood + genre bonuses → Top 5&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="240" x="50" y="395" as="geometry" />
+        </mxCell>
+        <mxCell id="guardrails" parent="agent_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" value="&lt;b&gt;6. GUARDRAILS&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;check_diversity() · check_duplicates()&lt;br&gt;check_relevance() · avg score ≥ 5.0&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="270" x="35" y="485" as="geometry" />
+        </mxCell>
+        <mxCell id="explain" parent="agent_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;7. EXPLAIN&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Natural-language explanations&lt;br&gt;References user&#39;s own words&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="240" x="50" y="575" as="geometry" />
+        </mxCell>
+        <mxCell id="reflect" parent="agent_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" value="&lt;b&gt;8. REFLECT&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Genre diversity + feature dominance&lt;br&gt;Informed by guardrail results&lt;br&gt;PASS / FAIL verdict&lt;/font&gt;" vertex="1">
+          <mxGeometry height="65" width="240" x="50" y="665" as="geometry" />
+        </mxCell>
+        <mxCell id="output" parent="agent_container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;strokeWidth=2;" value="&lt;b&gt;Top 5 Recommendations&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;songs + scores + explanations&lt;/font&gt;" vertex="1">
+          <mxGeometry height="45" width="220" x="60" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="ea1" edge="1" parent="agent_container" source="elicit" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="validate" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea2" edge="1" parent="agent_container" source="validate" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="retrieve" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea3" edge="1" parent="agent_container" source="retrieve" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="check_cand" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea4" edge="1" parent="agent_container" source="check_cand" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="scorer" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea5" edge="1" parent="agent_container" source="scorer" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="guardrails" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea6" edge="1" parent="agent_container" source="guardrails" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="explain" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea7" edge="1" parent="agent_container" source="explain" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="reflect" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ea8" edge="1" parent="agent_container" source="reflect" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="output" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_retry" edge="1" parent="agent_container" source="reflect" style="html=1;endArrow=block;endFill=1;dashed=1;strokeWidth=2;strokeColor=#b85450;fontColor=#b85450;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;curved=0;" target="retrieve" value="RETRY on FAIL (n=30)">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="15" y="698" />
+              <mxPoint x="15" y="245" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="haiku1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="&lt;b&gt;Claude Haiku&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Tool Use → Structured Output&lt;/font&gt;" vertex="1">
+          <mxGeometry height="50" width="190" x="750" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="chromadb" parent="1" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=12;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" value="&lt;b&gt;ChromaDB&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;1,710 songs · 114 genres&lt;br&gt;8-D feature embeddings&lt;/font&gt;" vertex="1">
+          <mxGeometry height="75" width="170" x="750" y="500" as="geometry" />
+        </mxCell>
+        <mxCell id="sonnet" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="&lt;b&gt;Claude Sonnet&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Contextual explanations&lt;br&gt;referencing user&#39;s words&lt;/font&gt;" vertex="1">
+          <mxGeometry height="55" width="190" x="750" y="860" as="geometry" />
+        </mxCell>
+        <mxCell id="haiku2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" value="&lt;b&gt;Claude Haiku&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;PASS / FAIL verdict&lt;/font&gt;" vertex="1">
+          <mxGeometry height="50" width="170" x="750" y="958" as="geometry" />
+        </mxCell>
+        <mxCell id="profile" parent="1" style="shape=note;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;size=14;" value="&lt;b&gt;UserProfile&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;8 features + mood&lt;br&gt;+ genre_hint&lt;/font&gt;" vertex="1">
+          <mxGeometry height="55" width="150" x="750" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="sidebar" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;strokeDasharray=8 4;" value="&lt;b&gt;Sidebar&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Observable Pipeline Steps&lt;br&gt;Extracted Profile Display&lt;/font&gt;" vertex="1">
+          <mxGeometry height="55" width="190" x="60" y="720" as="geometry" />
+        </mxCell>
+        <mxCell id="display" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;" value="&lt;b&gt;Recommendations Display&lt;/b&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px&quot;&gt;Song cards · score bars · explanations&lt;br&gt;artist / genre / match confidence&lt;/font&gt;" vertex="1">
+          <mxGeometry height="60" width="220" x="410" y="1170" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="user" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="ui" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="ui" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="input_guard" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="input_guard" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="agent_container" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_out" edge="1" parent="1" source="agent_container" style="endArrow=block;endFill=1;strokeWidth=2;strokeColor=#333333;" target="display" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_h1" edge="1" parent="1" source="elicit" style="html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=1.5;strokeColor=#9673a6;fontColor=#9673a6;fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" target="haiku1" value="extract">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_prof" edge="1" parent="1" source="validate" style="html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=1.5;strokeColor=#666666;fontColor=#666666;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" target="profile" value="cleaned profile">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_chroma" edge="1" parent="1" source="retrieve" style="html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=1.5;strokeColor=#b85450;fontColor=#b85450;fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" target="chromadb" value="query">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_son" edge="1" parent="1" source="explain" style="html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=1.5;strokeColor=#9673a6;fontColor=#9673a6;fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" target="sonnet" value="explain">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_h2" edge="1" parent="1" source="reflect" style="html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=1.5;strokeColor=#9673a6;fontColor=#9673a6;fontSize=12;fontStyle=1;labelBackgroundColor=#ffffff;" target="haiku2" value="reflect">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="log8" edge="1" parent="1" style="html=1;endArrow=open;endFill=0;dashed=1;strokeWidth=1;strokeColor=#6c8ebf;fontColor=#6c8ebf;fontSize=11;fontStyle=1;labelBackgroundColor=#ffffff;" target="sidebar" value="step logs">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="748" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
