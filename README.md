@@ -2,8 +2,7 @@
 
 An AI-powered music recommendation system that turns natural-language mood descriptions into personalized song picks. Uses **RAG** (Retrieval-Augmented Generation) to search a real music catalog, an **agentic pipeline** for multi-step reasoning, and **guardrails** for reliability. Built with Claude, ChromaDB, and Streamlit.
 
-<!-- TODO: Replace with an actual screenshot of the app running -->
-<!-- ![Vibe Buddy AI Screenshot](assets/screenshot.png) -->
+![Vibe Buddy AI Demo](assets/demo_screenshot.png)
 
 ---
 
@@ -31,7 +30,7 @@ The system runs an 8-step pipeline orchestrated by `pipeline/agent.py`:
 5. **SCORE** — Weighted distance across 8 audio features + mood/genre bonuses → top 5
 6. **GUARDRAILS** — Check genre diversity, duplicate artists, relevance threshold
 7. **EXPLAIN** — Generate natural-language explanations referencing the user's own words
-8. **REFLECT** — LLM evaluates each song individually for mood/vibe fit; keeps passing songs, replaces failures from a wider candidate pool on retry
+8. **REFLECT** — LLM self-critique informed by guardrail results; retry once on failure (genre-aware: keeps matching songs, replaces mismatches)
 
 Every step is logged with timestamps and displayed in the sidebar for full transparency.
 
@@ -92,7 +91,7 @@ User:  "Acoustic and mellow, maybe some folk vibes"
 → Extracts: energy=0.3, acousticness=0.85, mood=peaceful, genre_hint=folk
 → Retrieves 20 candidates (filtered by folk, backfilled)
 → Scores and selects top 5
-→ Self-critique: PASS (5/5 songs fit the vibe)
+→ Self-critique: PASS (3 genres represented)
 
 Recommendations:
   1. "Harvest Moon" by Neil Young (folk) — Score: 9.2
@@ -135,6 +134,7 @@ pytest tests/test_scorer.py -v       # 5 tests — scoring and ranking logic, no
 VibeBuddy-AI/
 ├── app.py                      # Streamlit UI (chat interface + pipeline sidebar)
 ├── pipeline/
+│   ├── __init__.py
 │   ├── agent.py                # 8-step agentic orchestrator
 │   ├── conversation.py         # Multi-turn conversation + preference extraction
 │   ├── explainer.py            # LLM explanation generation (Sonnet)
@@ -148,14 +148,21 @@ VibeBuddy-AI/
 │   └── retriever.py            # ChromaDB query (genre-filtered + backfill)
 ├── data/
 │   ├── songs.csv               # 1,710-song catalog (114 genres × 15 songs)
+│   ├── original_songs.csv      # Original 18-song baseline (preserved for eval)
 │   └── train.csv               # Raw Spotify dataset
-├── tests/                      # pytest unit + integration tests
-├── eval_harness.py             # 7-test automated evaluation
+├── tests/
+│   ├── test_agent.py           # Agent integration test
+│   ├── test_guardrails.py      # 18 guardrail unit tests (no API calls)
+│   ├── test_retriever.py       # 4 ChromaDB integration tests
+│   └── test_scorer.py          # 5 scoring and ranking tests
+├── eval_harness.py             # 8-test automated evaluation
 ├── assets/
-│   └── architecture.png        # System architecture diagram
+│   ├── architecture.png        # System architecture diagram
+│   └── demo_screenshot.png     # App demo screenshot
 ├── model_card.md               # Detailed model documentation
 ├── REFLECTION.md               # Development process and base project context
-└── requirements.txt
+├── requirements.txt
+└── .gitignore
 ```
 
 ---
