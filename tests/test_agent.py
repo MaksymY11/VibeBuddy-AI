@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, ".")
 
-from agent import Agent
+from pipeline.agent import Agent
 
 fake_profile = {
       "energy": 0.8, "valence": 0.7, "danceability": 0.6,

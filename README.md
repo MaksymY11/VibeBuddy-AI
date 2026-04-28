@@ -14,7 +14,7 @@ An AI-powered music recommendation system that turns natural-language mood descr
 - **8-step agentic pipeline** — observable reasoning from elicitation through self-critique
 - **Genre-aware retrieval** — filtered search with alias mapping ("rap" → "hip-hop") and automatic backfill
 - **Guardrails at three layers** — input validation, profile normalization, and output quality checks
-- **Automated eval harness** — 7 tests proving the system handles documented failure modes
+- **Automated eval harness** — 8 tests proving the system handles documented failure modes
 
 ---
 
@@ -31,7 +31,7 @@ The system runs an 8-step pipeline orchestrated by `pipeline/agent.py`:
 5. **SCORE** — Weighted distance across 8 audio features + mood/genre bonuses → top 5
 6. **GUARDRAILS** — Check genre diversity, duplicate artists, relevance threshold
 7. **EXPLAIN** — Generate natural-language explanations referencing the user's own words
-8. **REFLECT** — LLM self-critique informed by guardrail results; retry once on failure
+8. **REFLECT** — LLM self-critique informed by guardrail results; retry once on failure (genre-aware: keeps matching songs, replaces mismatches)
 
 Every step is logged with timestamps and displayed in the sidebar for full transparency.
 
@@ -45,7 +45,7 @@ Every step is logged with timestamps and displayed in the sidebar for full trans
 | LLM | Claude API (Anthropic) | Conversation, extraction, explanation, self-critique |
 | Vector Store | ChromaDB | Cosine similarity search over 8-D feature embeddings |
 | Data | Kaggle Spotify Tracks Genre | 1,710 songs with real audio features |
-| Testing | pytest + custom eval harness | 18 unit tests + 7 end-to-end eval tests |
+| Testing | pytest + custom eval harness | 27 unit tests + 8 end-to-end eval tests |
 
 **Model tiering for cost control:** Haiku handles extraction and self-critique (fast, cheap). Sonnet handles explanations (higher quality). Session caps (5 flows, 4 turns each) bound API usage per user.
 
@@ -106,7 +106,7 @@ Recommendations:
 
 ### Eval Harness (`python eval_harness.py`)
 
-7 automated tests targeting edge cases and documented failure modes:
+8 automated tests targeting edge cases and documented failure modes:
 
 | Test | What it checks | Result |
 |------|---------------|--------|
@@ -117,12 +117,14 @@ Recommendations:
 | Out-of-range values | Extreme values are clamped to [0,1] | PASS |
 | Vague conversation | Underspecified input triggers follow-up, not extraction | PASS |
 | Refinement | Changing preferences produces measurably different results | PASS |
+| Genre hint | Requested genre dominates results after retry | PASS |
 
 ### Unit Tests
 
 ```bash
 pytest tests/test_guardrails.py -v   # 18 tests — all guardrail functions, no API calls
 pytest tests/test_retriever.py -v    # 4 tests — ChromaDB integration
+pytest tests/test_scorer.py -v       # 5 tests — scoring and ranking logic, no API calls
 ```
 
 ---

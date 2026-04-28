@@ -267,7 +267,7 @@ def render_song_card(song, rank):
     title = song.get("title", "Unknown")
     artist = song.get("artist", "Unknown")
     genre = song.get("genre", "")
-    explanation = explanation = song.get("explanation", "").replace('"', '&quot;').replace('<', '&lt;').replace('>','&gt;')
+    explanation = song.get("explanation", "").replace('"', '&quot;').replace('<', '&lt;').replace('>','&gt;')
     return f"""
     <div style="
         display:flex; border-radius:3px; overflow:hidden; margin-bottom:8px;

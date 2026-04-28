@@ -145,6 +145,25 @@ def test_refinement():
     passed = avg_2 > avg_1
     return passed, f"Avg energy: {avg_1:.2f} → {avg_2:.2f}"
 
+def test_genre_hint():
+    """
+    Profile with genre_hint="electronic".
+    To prove that when a user requests a specific genre, the majority of
+    results belong to that genre, even after the reflect retry.
+    """
+    profile = {
+        "energy": 0.75, "valence": 0.8, "danceability": 0.85,
+        "acousticness": 0.1, "instrumentalness": 0.4, "liveness": 0.2,
+        "speechiness": 0.05, "tempo_bpm": 0.65, "mood": "happy",
+        "genre_hint": "electronic"
+    }
+    messages = [{"role": "user", "content": "I want upbeat electronic music"}]
+    agent = Agent()
+    recs, steps = agent.run(profile, messages)
+    match_cnt = sum(1 for s in recs if s["genre"] == "electronic")
+    passed = match_cnt >= 3
+    return passed, f"{match_cnt}/{len(recs)} songs were electronic"
+
 tests = [
     {"name": "Energy dominance", "run": test_energy_dominance},
     {"name": "Contradictory preferences", "run": test_contradictory},
@@ -153,6 +172,7 @@ tests = [
     {"name": "Out-of-range values", "run": test_out_of_range},
     {"name": "Vague conversation", "run": test_vague_input},
     {"name": "Refinement", "run": test_refinement},
+    {"name": "Genre hint", "run": test_genre_hint},
 ]
 
 results = [run_test(t) for t in tests]

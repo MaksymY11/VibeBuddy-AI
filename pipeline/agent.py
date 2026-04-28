@@ -11,7 +11,7 @@ class StepResult:
     step_name: str
     input_summary: str
     output_summary: str
-    timestamp: datetime
+    timestamp: str
 
 class Agent():
     def __init__(self):
@@ -97,50 +97,86 @@ class Agent():
         guardrail_note = ""
         if not report["passed"]:
             guardrail_note = f"\nAutomated checks found issues: {', '.join(report['issues'])}"
-        genre_note = f"(The user specifically requrest {genre_hint}, so same-genre results are expected.)" if genre_hint else ""
-        prompt =f"""
-                Review these music recommendations for someone who wanted: {profile['mood']}
+        if genre_hint:
+            user_wanted = f"{profile['mood']} mood, specifically {genre_hint} genre"
+            diversity_check = f"1. The user explicitly requested {genre_hint}, so most results SHOULD be {genre_hint}. Only flag diversity if results don't match the requested genre."
+        else:
+            user_wanted = f"{profile['mood']} mood (no genre preference)"
+            diversity_check = "1. Are at least 2 different genres represented?"
+        prompt = f"""
+                Review these music recommendations for someone who wanted: {user_wanted}
 
                 {song_list}
                 {guardrail_note}
 
                 Check:
-                1. Are at least 2 different genres represented? {genre_note}
+                {diversity_check}
                 2. Does one feature dominate all scores?
                 3. Are there any issues noted above?
 
                 Respond with exactly PASS or FAIL on the first line, then a short reason.
                 """
-        response = chat(
-            "You are a music recommendation reviewer.",
-            [{"role": "user", "content": prompt}],
-            model ="claude-haiku-4-5-20251001",
-            temperature=0
+        verdict, reason = self._parse_reflect_response(
+            chat(
+                "You are a music recommendation reviewer.",
+                [{"role": "user", "content": prompt}],
+                model="claude-haiku-4-5-20251001",
+                temperature=0,
+            )
         )
-        lines = response.strip().split("\n")
-        verdict = lines[0]
-        reason = lines[1] if len(lines)>1 else ""
 
         if "FAIL" in verdict and self.max_retries > 0:
             self.max_retries -= 1
             self.log_step(
                 "REFLECT",
                 f"{len(top_5)} recommendations",
-                f"Result: {verdict} - {reason} - retrying",
+                f"FAIL: {reason} — retrying with wider pool",
             )
             genre_hint = profile.get("genre_hint", "")
-            candidates = retrieve_candidates(profile, n=30, genre_hint=genre_hint)
-            top_5 = rank_candidates(candidates, profile, k=5)
+            if genre_hint:
+                keepers = [s for s in top_5 if s["genre"] == genre_hint]
+                slots = 5 - len(keepers)
+                candidates = retrieve_candidates(profile, n=30, genre_hint=genre_hint)
+                existing_titles = {s["title"] for s in keepers}
+                filtered = [c for c in candidates if c["title"] not in existing_titles and c["genre"] == genre_hint]
+                replacements = rank_candidates(filtered or candidates, profile, k=slots)
+                top_5 = sorted(keepers + replacements, key=lambda x: x["score"], reverse=True)
+            else:
+                candidates = retrieve_candidates(profile, n=30, genre_hint=genre_hint)
+                top_5 = rank_candidates(candidates, profile, k=5)
+
+            report = run_output_guardrails(top_5, skip_diversity=bool(genre_hint))
+            self.log_step(
+                "GUARDRAILS",
+                f"{len(top_5)} recommendations (retry)",
+                f"{'PASS' if report['passed'] else 'FAIL'}: {report['issues']}",
+            )
+
             explanations = generate_explanations(top_5, conversation_messages, profile)
             for i, song in enumerate(top_5):
                 song["explanation"] = explanations[i]
+            self.log_step(
+                "EXPLAIN",
+                f"{len(top_5)} songs (retry)",
+                f"Generated {len(explanations)} explanations",
+            )
+
+            self.log_step(
+                "REFLECT",
+                f"{len(top_5)} recommendations (retry)",
+                f"Retried after: {reason}",
+            )
         else:
             self.log_step(
                 "REFLECT",
                 f"{len(top_5)} recommendations",
-                f"Result: {verdict} - {reason}"
+                f"Result: {verdict} — {reason}",
             )
         return top_5, self.steps
 
-
-     
+    @staticmethod
+    def _parse_reflect_response(response):
+        lines = [line.strip() for line in response.strip().split("\n") if line.strip()]
+        verdict = lines[0] if lines else "PASS"
+        reason = " ".join(lines[1:]) if len(lines) > 1 else "No reason given"
+        return verdict, reason

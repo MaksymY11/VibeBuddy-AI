@@ -23,7 +23,7 @@ The system uses an 8-step agentic pipeline (see [architecture diagram](assets/ar
 2. **Retrieve:** The extracted preferences become an 8-dimensional vector. If a genre hint is present, ChromaDB first retrieves songs filtered by that genre, then backfills with unfiltered results if needed. Without a genre hint, retrieval is purely similarity-based across all 114 genres.
 3. **Score:** A weighted distance scorer ranks the 20 candidates. Weights: energy (2.0), valence (1.5), danceability (1.5), acousticness (1.0), tempo (0.75), instrumentalness/liveness/speechiness (0.5 each). Mood adds a 1.0 bonus on exact match. Genre adds a 1.5 bonus when the song's genre matches the user's genre hint. Top 5 are selected.
 4. **Explain:** An LLM (Claude Sonnet) writes natural-language explanations for each song, referencing the user's own words rather than raw feature values.
-5. **Reflect:** An LLM (Claude Haiku) self-critiques the recommendations for genre diversity and feature dominance, informed by automated guardrail results. When the user requested a specific genre, same-genre results are expected and not penalized. If it fails, the pipeline retries once with a wider candidate pool.
+5. **Reflect:** An LLM (Claude Haiku) self-critiques the recommendations for genre diversity and feature dominance, informed by automated guardrail results. When the user requested a specific genre, same-genre results are expected and not penalized. If it fails, the pipeline retries once — when a genre was requested, it keeps songs that already match and fills remaining slots with genre-filtered candidates from a wider pool; otherwise it re-retrieves and re-ranks entirely.
 
 ### Guardrails & Reliability
 
@@ -98,7 +98,7 @@ The system uses an 8-step agentic pipeline (see [architecture diagram](assets/ar
 
 ### Automated Eval Harness (`python eval_harness.py`)
 
-7 test cases targeting documented failure modes from the baseline system and new edge cases. Each test calls the full agent pipeline (retrieve → score → explain → reflect) and checks a specific pass condition.
+8 test cases targeting documented failure modes from the baseline system and new edge cases. Each test calls the full agent pipeline (retrieve → score → explain → reflect) and checks a specific pass condition.
 
 | Test | Input | Pass Condition | Result |
 |------|-------|----------------|--------|
@@ -109,6 +109,7 @@ The system uses an 8-step agentic pipeline (see [architecture diagram](assets/ar
 | Out-of-range values | energy=5.0, valence=-2.0 | Values clamped, results returned | PASS (energy=1.0, valence=0.0) |
 | Vague conversation | "idk play something" | LLM asks follow-up, no extraction | PASS |
 | Refinement | Low energy → high energy | Second run has higher avg energy | PASS (0.47 → 0.79) |
+| Genre hint | genre_hint="electronic" | At least 3/5 results match requested genre | PASS |
 
 ### Unit and Integration Tests
 

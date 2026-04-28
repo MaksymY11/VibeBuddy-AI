@@ -16,9 +16,29 @@ fake_song = {
     "liveness": 0.25, "speechiness": 0.08, "tempo_bpm": 0.55
 }
 
-total, contributions = score_song(fake_song, fake_profile)
-print(f"Score: {total:.2f}")
-print(f"Contributions: {contributions}")
 
-ranked = rank_candidates([fake_song, fake_song], fake_profile, k=1)
-print(f"Top pick: {ranked[0]['title']} — Score: {ranked[0]['score']:.2f}")
+def test_score_song_returns_positive():
+    total, contributions = score_song(fake_song, fake_profile)
+    assert total > 0
+
+
+def test_score_song_mood_match_bonus():
+    total, contributions = score_song(fake_song, fake_profile)
+    assert contributions["mood"] == 1.0
+
+
+def test_score_song_no_mood_match():
+    sad_song = {**fake_song, "mood": "sad"}
+    total, contributions = score_song(sad_song, fake_profile)
+    assert contributions["mood"] == 0.0
+
+
+def test_rank_candidates_respects_k():
+    ranked = rank_candidates([fake_song, fake_song], fake_profile, k=1)
+    assert len(ranked) == 1
+
+
+def test_rank_candidates_includes_score():
+    ranked = rank_candidates([fake_song], fake_profile, k=1)
+    assert "score" in ranked[0]
+    assert ranked[0]["score"] > 0

@@ -62,7 +62,7 @@ def validate_profile(profile):
         if feat not in ("mood","genre_hint"):
             profile[feat] = max(0.0, min(1.0, float(val)))
     profile["mood"] = validate_mood(profile["mood"])
-    profile["genre_hint"] = validate_genre(profile["genre_hint"])
+    profile["genre_hint"] = validate_genre(profile.get("genre_hint", ""))
 
     return profile
 
