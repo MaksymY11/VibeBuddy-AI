@@ -4,6 +4,8 @@ Run with: streamlit run streamlit_app.py
 """
 
 import streamlit as st
+from utils.data_loader import ingest_songs
+ingest_songs() # creates ChromaDB collection if it doesn't exist yet.
 from pipeline.guardrails import validate_input
 from pipeline.conversation import ConversationManager
 from pipeline.agent import Agent
