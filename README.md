@@ -2,7 +2,11 @@
 
 An AI-powered music recommendation system that turns natural-language mood descriptions into personalized song picks. Uses **RAG** (Retrieval-Augmented Generation) to search a real music catalog, an **agentic pipeline** for multi-step reasoning, and **guardrails** for reliability. Built with Claude, ChromaDB, and Streamlit.
 
+**[Try it live](https://vibebuddy-ai.streamlit.app/)**
+
 ![Vibe Buddy AI Demo](assets/demo_screenshot.png)
+
+**[Video Walkthrough](https://www.loom.com/share/cbd8741834c549889f8ced4cc17693f4)**
 
 ---
 
